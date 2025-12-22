@@ -10,12 +10,14 @@ A comprehensive tournament management system built with Spring Boot, providing r
 - Real-time standings and statistics
 - RESTful API for integration
 - In-memory H2 database with JPA
+- Interactive API documentation with Swagger UI
 
 ## Tech Stack
 
 - Java 17
 - Spring Boot 3.5.0
 - Spring Data JPA
+- SpringDoc OpenAPI 2.8.14
 - MapStruct
 - H2 Database
 - Maven
@@ -49,6 +51,15 @@ The application will start on `http://localhost:8080`
 
 ## API Documentation
 
-Once the application is running, you can access:
-- Swagger UI: `http://localhost:8080/swagger-ui.html`
-- H2 Console: `http://localhost:8080/h2-console`
+The application provides interactive API documentation using Swagger UI:
+
+- **Swagger UI**: [http://localhost:8080/swagger-ui.html](http://localhost:8080/swagger-ui.html)
+- **OpenAPI JSON**: [http://localhost:8080/v3/api-docs](http://localhost:8080/v3/api-docs)
+
+## Database Console
+
+Access the H2 database console at:
+- URL: [http://localhost:8080/h2-console](http://localhost:8080/h2-console)
+- JDBC URL: `jdbc:h2:mem:tournamentdb`
+- Username: `sa`
+- Password: (leave empty)
