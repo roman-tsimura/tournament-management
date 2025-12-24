@@ -1,9 +1,15 @@
 # Tournament Management System
 
-A comprehensive tournament management system built with Spring Boot, providing robust features for organizing and managing sports or gaming tournaments.
+A comprehensive tournament management system with a Spring Boot backend and Angular frontend, providing robust features for organizing and managing sports or gaming tournaments.
+
+## Project Structure
+
+- `/backend` - Spring Boot application (REST API)
+- `/frontend` - Angular application (Web interface)
 
 ## Features
 
+### Backend
 - Team and player management
 - Tournament creation and management
 - Match scheduling and results tracking
@@ -12,8 +18,17 @@ A comprehensive tournament management system built with Spring Boot, providing r
 - In-memory H2 database with JPA
 - Interactive API documentation with Swagger UI
 
+### Frontend
+- Modern, responsive UI built with Angular
+- Real-time tournament updates
+- Interactive dashboard
+- Player and team management interface
+- Match results submission
+- Tournament standings and statistics
+
 ## Tech Stack
 
+### Backend
 - Java 17
 - Spring Boot 3.5.0
 - Spring Data JPA
@@ -22,12 +37,20 @@ A comprehensive tournament management system built with Spring Boot, providing r
 - H2 Database
 - Maven
 
+### Frontend
+- Angular 21.0.4
+- TypeScript
+- RxJS
+- Angular Material
+- HTML5/CSS3
+
 ## Getting Started
 
 ### Prerequisites
 
 - Java 17 or later
 - Maven 3.6.0 or later
+- Node.js 18+ and npm 9+ (for frontend development)
 
 ### Installation
 
@@ -47,7 +70,24 @@ A comprehensive tournament management system built with Spring Boot, providing r
    mvn spring-boot:run
    ```
 
-The application will start on `http://localhost:8080`
+### Frontend Development
+
+1. Navigate to the frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Start the development server:
+   ```bash
+   ng serve
+   ```
+
+The frontend will be available at `http://localhost:4200`
 
 ## API Documentation
 
