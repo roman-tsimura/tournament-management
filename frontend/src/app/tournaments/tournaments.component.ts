@@ -1,8 +1,8 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
 import { Tournament, TournamentParticipant, TournamentStats, TournamentSettings, Game, TeamAssignment } from '../models/tournament.model';
 import { TournamentService } from '../services/tournament.service';
 import { Player } from '../models/player.model';
@@ -11,6 +11,8 @@ import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
 import { NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap';
 import { DatePipe } from '@angular/common';
+import { filter } from 'rxjs/operators';
+import { Subscription } from 'rxjs';
 
 type TournamentView = 'list' | 'create' | 'teams' | 'tournament' | 'game';
 
@@ -35,8 +37,9 @@ interface PlayerTeamSelection {
   templateUrl: './tournaments.component.html',
   styleUrls: ['./tournaments.component.scss']
 })
-export class TournamentsComponent implements OnInit {
+export class TournamentsComponent implements OnInit, OnDestroy {
   private _currentView: TournamentView = 'list';
+  private routerSubscription: Subscription = new Subscription();
   
   get currentView(): TournamentView {
     return this._currentView;
@@ -45,10 +48,7 @@ export class TournamentsComponent implements OnInit {
   set currentView(value: TournamentView) {
     console.log(`Changing view from ${this._currentView} to ${value}`);
     this._currentView = value;
-    // Trigger change detection
-    setTimeout(() => {
-      console.log(`View changed to: ${this._currentView}`);
-    });
+    console.log(`View changed to: ${this._currentView}`);
   }
   
   tournaments: Tournament[] = [];
@@ -74,7 +74,9 @@ export class TournamentsComponent implements OnInit {
     private teamService: TeamService,
     private fb: FormBuilder,
     private router: Router,
-    private datePipe: DatePipe
+    private route: ActivatedRoute,
+    private datePipe: DatePipe,
+    private changeDetector: ChangeDetectorRef
   ) {
     this.tournamentForm = this.fb.group({
       name: ['', Validators.required],
@@ -90,31 +92,84 @@ export class TournamentsComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    console.log('Component initialized, setting currentView to "list"');
-    // Using the setter to ensure change detection
-    this.currentView = 'list';
-    this.loadTournaments();
-    this.loadPlayers();
-    this.loadTeams();
+    console.log('TournamentsComponent initialized');
+    this._currentView = 'list';
+    
+    // Initial data load
+    this.loadInitialData();
+    
+    // Subscribe to route changes
+    this.routerSubscription = this.router.events.pipe(
+      filter(event => event instanceof NavigationEnd)
+    ).subscribe(() => {
+      if (this.router.url === '/tournaments') {
+        console.log('Navigation to /tournaments detected, reloading data');
+        this.loadInitialData();
+      }
+    });
   }
 
-  loadTournaments(): void {
-    console.log('Starting to load tournaments...');
+  ngOnDestroy(): void {
+    if (this.routerSubscription) {
+      this.routerSubscription.unsubscribe();
+    }
+  }
+
+  private loadInitialData(): void {
+    console.log('Loading initial data...');
     this.isLoading = true;
-    this.tournamentService.getAllTournaments().subscribe({
-      next: (tournaments) => {
-        console.log('Tournaments received:', tournaments);
-        this.tournaments = tournaments || [];
-        this.collectionSize = this.tournaments.length;
-        console.log(`Loaded ${this.tournaments.length} tournaments`);
-        this.isLoading = false;
-      },
-      error: (error) => {
-        console.error('Error loading tournaments:', error);
-        this.tournaments = [];
-        this.collectionSize = 0;
-        this.isLoading = false;
-      }
+    
+    // Reset the view to ensure proper rendering
+    this._currentView = 'list';
+    
+    // Force change detection
+    this.changeDetector.detectChanges();
+    
+    // Load data in parallel
+    Promise.all([
+      this.loadTournaments(),
+      this.loadPlayers(),
+      this.loadTeams()
+    ]).catch(error => {
+      console.error('Error loading initial data:', error);
+      this.isLoading = false;
+      this.changeDetector.detectChanges();
+    });
+  }
+
+  loadTournaments(): Promise<void> {
+    console.log('Starting to load tournaments...');
+    
+    return new Promise((resolve) => {
+      this.tournamentService.getAllTournaments().subscribe({
+        next: (tournaments) => {
+          console.log('Tournaments received:', tournaments);
+          this.tournaments = Array.isArray(tournaments) ? tournaments : [];
+          this.collectionSize = this.tournaments.length;
+          console.log(`Loaded ${this.tournaments.length} tournaments`);
+          this.isLoading = false;
+          
+          // Force change detection after a small delay
+          setTimeout(() => {
+            this.changeDetector.detectChanges();
+          }, 0);
+          
+          resolve();
+        },
+        error: (error) => {
+          console.error('Error loading tournaments:', error);
+          this.tournaments = [];
+          this.collectionSize = 0;
+          this.isLoading = false;
+          
+          // Force change detection
+          setTimeout(() => {
+            this.changeDetector.detectChanges();
+          }, 0);
+          
+          resolve();
+        }
+      });
     });
   }
 

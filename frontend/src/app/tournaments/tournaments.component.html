@@ -4,19 +4,22 @@
   <div class="tournament-list">
     <div class="d-flex justify-content-between align-items-center mb-4">
       <h2>Tournaments</h2>
-      <button class="btn btn-primary" (click)="createNewTournament()">
-        <i class="bi bi-plus-circle"></i> Create New Tournament
+      <button class="btn btn-primary" (click)="createNewTournament()" [disabled]="isLoading">
+        <i class="bi" [ngClass]="isLoading ? 'bi-arrow-repeat spin' : 'bi-plus-circle'"></i>
+        {{ isLoading ? 'Loading...' : 'Create New Tournament' }}
       </button>
     </div>
 
     @if (isLoading) {
     <div class="text-center my-5">
-      <div class="spinner-border" role="status">
-        <span class="visually-hidden">Loading...</span>
+      <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Loading tournaments...</span>
       </div>
+      <p class="mt-2">Loading tournaments, please wait...</p>
     </div>
     } @else if (tournaments.length === 0) {
     <div class="alert alert-info">
+      <i class="bi bi-info-circle me-2"></i>
       No tournaments found. Create a new tournament to get started!
     </div>
     }
