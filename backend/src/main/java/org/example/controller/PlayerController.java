@@ -7,6 +7,7 @@ import org.example.model.Player;
 import org.example.service.PlayerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
@@ -43,9 +44,7 @@ public class PlayerController {
 
     @PostMapping
     public ResponseEntity<PlayerDTO> createPlayer(@Valid @RequestBody CreatePlayerRequest request) {
-        Player player = new Player();
-        player.setName(request.getName());
-
+        Player player = playerMapper.toEntity(request);
         Player savedPlayer = playerService.save(player);
         PlayerDTO playerDTO = playerMapper.toDTO(savedPlayer);
 
@@ -55,13 +54,16 @@ public class PlayerController {
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<PlayerDTO> updatePlayer(
             @PathVariable Long id,
-            @Valid @RequestBody PlayerDTO playerDTO) {
-
-        playerDTO.setId(id); // Ensure the ID in the path is used
-        Player updatedPlayer = playerService.update(id, playerMapper.toEntity(playerDTO));
-        return ResponseEntity.ok(playerMapper.toDTO(updatedPlayer));
+            @Valid @RequestBody CreatePlayerRequest updatePlayerRequest) {
+        return playerService.findById(id)
+                .map(existingPlayer -> {
+                    playerMapper.updateFromDto(updatePlayerRequest, existingPlayer);
+                    return ResponseEntity.ok(playerMapper.toDTO(existingPlayer));
+                })
+                .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
