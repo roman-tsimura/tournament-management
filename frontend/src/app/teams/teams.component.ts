@@ -35,17 +35,14 @@ export class TeamsComponent implements OnInit {
   loadTeams(): void {
     this.loading = true;
     this.error = null;
-    console.log('Loading teams...');
 
     this.teamService.getTeams().subscribe({
       next: (data) => {
-        console.log('Teams loaded:', data);
         this.teams = [...data];
         this.loading = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Error loading teams:', err);
         this.error = 'Failed to load teams. Please try again later.';
         this.loading = false;
         this.cdr.markForCheck();
@@ -104,7 +101,6 @@ export class TeamsComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Error creating team:', err);
         this.error = 'Failed to create team. Please try again.';
         this.loading = false;
         this.cdr.markForCheck();
@@ -135,7 +131,6 @@ export class TeamsComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Error updating team:', err);
         this.error = 'Failed to update team. Please try again.';
         this.loading = false;
         this.cdr.markForCheck();
@@ -156,7 +151,6 @@ export class TeamsComponent implements OnInit {
         this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Error deleting team:', err);
         this.error = 'Failed to delete team. Please try again.';
         this.loading = false;
         this.cdr.markForCheck();

@@ -1,7 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { tap } from 'rxjs/operators';
 import { Tournament, CreateTournamentRequest, UpdateGameScoreRequest, TournamentStats } from '../models/tournament.model';
 import { environment } from '../../environments/environment';
 
@@ -26,13 +25,7 @@ export class TournamentService {
   }
 
   getAllTournaments(): Observable<Tournament[]> {
-    console.log('Fetching tournaments from:', this.apiUrl);
-    return this.http.get<Tournament[]>(this.apiUrl).pipe(
-      tap({
-        next: (tournaments) => console.log('Successfully loaded tournaments:', tournaments),
-        error: (error) => console.error('Error loading tournaments:', error)
-      })
-    );
+    return this.http.get<Tournament[]>(this.apiUrl);
   }
 
   startNextRound(tournamentId: string, settings?: {
