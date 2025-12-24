@@ -2,13 +2,17 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
+import { RouterModule, Router } from '@angular/router';
 import { Tournament, TournamentParticipant, TournamentStats, TournamentSettings, Game, TeamAssignment } from '../models/tournament.model';
 import { TournamentService } from '../services/tournament.service';
 import { Player } from '../models/player.model';
 import { Team } from '../models/team.model';
 import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
-import { RouterModule } from '@angular/router';
+import { NgbPaginationModule } from '@ng-bootstrap/ng-bootstrap';
+import { DatePipe } from '@angular/common';
+
+type TournamentView = 'list' | 'create' | 'teams' | 'tournament' | 'game';
 
 interface PlayerTeamSelection {
   playerId: string;
@@ -19,34 +23,58 @@ interface PlayerTeamSelection {
 @Component({
   selector: 'app-tournament',
   standalone: true,
+  providers: [DatePipe],
   imports: [
     CommonModule, 
     FormsModule, 
     ReactiveFormsModule,
-    RouterModule
+    RouterModule,
+    NgbPaginationModule,
+    DatePipe
   ],
   templateUrl: './tournaments.component.html',
   styleUrls: ['./tournaments.component.scss']
 })
 export class TournamentsComponent implements OnInit {
-  tournamentForm: FormGroup;
+  private _currentView: TournamentView = 'list';
+  
+  get currentView(): TournamentView {
+    return this._currentView;
+  }
+  
+  set currentView(value: TournamentView) {
+    console.log(`Changing view from ${this._currentView} to ${value}`);
+    this._currentView = value;
+    // Trigger change detection
+    setTimeout(() => {
+      console.log(`View changed to: ${this._currentView}`);
+    });
+  }
+  
+  tournaments: Tournament[] = [];
   currentTournament: Tournament | null = null;
   players: Player[] = [];
   teams: Team[] = [];
   selectedPlayers: string[] = [];
-  isLoading = false;
-  currentView: 'create' | 'teams' | 'tournament' | 'game' = 'create';
+  isLoading = true;
+  // currentView is now a getter/setter with _currentView as the backing field
   currentGame: Game | null = null;
-  stats: TournamentStats | null = null;
-  playerSelections: PlayerTeamSelection[] = [];
-  currentRound = 1;
+  currentRound: number = 1;
+  stats: any = null;
+  tournamentForm: FormGroup;
+  page = 1;
+  pageSize = 10;
+  collectionSize = 0;
   scoreForm: FormGroup;
+  playerSelections: PlayerTeamSelection[] = [];
 
   constructor(
-    private fb: FormBuilder,
     private tournamentService: TournamentService,
     private playerService: PlayerService,
-    private teamService: TeamService
+    private teamService: TeamService,
+    private fb: FormBuilder,
+    private router: Router,
+    private datePipe: DatePipe
   ) {
     this.tournamentForm = this.fb.group({
       name: ['', Validators.required],
@@ -62,8 +90,45 @@ export class TournamentsComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    console.log('Component initialized, setting currentView to "list"');
+    // Using the setter to ensure change detection
+    this.currentView = 'list';
+    this.loadTournaments();
     this.loadPlayers();
     this.loadTeams();
+  }
+
+  loadTournaments(): void {
+    console.log('Starting to load tournaments...');
+    this.isLoading = true;
+    this.tournamentService.getAllTournaments().subscribe({
+      next: (tournaments) => {
+        console.log('Tournaments received:', tournaments);
+        this.tournaments = tournaments || [];
+        this.collectionSize = this.tournaments.length;
+        console.log(`Loaded ${this.tournaments.length} tournaments`);
+        this.isLoading = false;
+      },
+      error: (error) => {
+        console.error('Error loading tournaments:', error);
+        this.tournaments = [];
+        this.collectionSize = 0;
+        this.isLoading = false;
+      }
+    });
+  }
+
+  viewTournament(tournamentId: string): void {
+    this.router.navigate(['/tournaments', tournamentId]);
+  }
+
+  createNewTournament(): void {
+    this.currentView = 'create';
+  }
+
+  onBackToList(): void {
+    this.currentView = 'list';
+    this.loadTournaments();
   }
 
   async loadPlayers(): Promise<void> {

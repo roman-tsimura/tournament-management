@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { tap } from 'rxjs/operators';
 import { Tournament, CreateTournamentRequest, UpdateGameScoreRequest, TournamentStats } from '../models/tournament.model';
 import { environment } from '../../environments/environment';
 
@@ -22,6 +23,16 @@ export class TournamentService {
 
   updateGameScore(tournamentId: string, gameData: UpdateGameScoreRequest): Observable<Tournament> {
     return this.http.put<Tournament>(`${this.apiUrl}/${tournamentId}/games`, gameData);
+  }
+
+  getAllTournaments(): Observable<Tournament[]> {
+    console.log('Fetching tournaments from:', this.apiUrl);
+    return this.http.get<Tournament[]>(this.apiUrl).pipe(
+      tap({
+        next: (tournaments) => console.log('Successfully loaded tournaments:', tournaments),
+        error: (error) => console.error('Error loading tournaments:', error)
+      })
+    );
   }
 
   startNextRound(tournamentId: string, settings?: {

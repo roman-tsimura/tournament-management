@@ -91,6 +91,33 @@
     }
   }
 
+  /* Status Badges */
+  :host-context(body) {
+    .badge {
+      color: var(--bs-table-color) !important;
+      background-color: transparent !important;
+      border: 1px solid transparent;
+      font-weight: 400;
+      letter-spacing: normal;
+      text-transform: none;
+      padding: 0.25em 0.6em;
+      font-size: 0.9em;
+      line-height: 1.5;
+
+      &.bg-warning {
+        border-color: #e6a800 !important;
+      }
+
+      &.bg-primary {
+        border-color: #0d6efd !important;
+      }
+
+      &.bg-success {
+        border-color: #198754 !important;
+      }
+    }
+  }
+
   .btn {
     display: inline-block;
     padding: 10px 20px;
