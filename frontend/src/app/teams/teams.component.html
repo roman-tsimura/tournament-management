@@ -1,0 +1,83 @@
+<div class="teams-container">
+  <h2>Teams Management</h2>
+  
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+    <button type="button" class="close" (click)="error = null">&times;</button>
+  </div>
+
+  <div class="mb-3">
+    <button class="btn btn-primary" (click)="showAddTeamForm()" [disabled]="loading">
+      <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      Add New Team
+    </button>
+  </div>
+
+  <div *ngIf="showAddForm" class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">{{ editingTeam ? 'Edit Team' : 'Add New Team' }}</h5>
+    </div>
+    <div class="card-body">
+      <form (ngSubmit)="saveTeam()" #teamForm="ngForm">
+        <div class="mb-3">
+          <label for="teamName" class="form-label">Team Name *</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="teamName" 
+            name="name" 
+            [(ngModel)]="currentTeamName" 
+            required>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelForm()" [disabled]="loading">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading || !teamForm.form.valid">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            {{ editingTeam ? 'Update' : 'Save' }} Team
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div *ngIf="loading && !showAddForm" class="text-center my-4">
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading teams...</p>
+  </div>
+
+  <div *ngIf="!loading && teams.length === 0 && !showAddForm" class="alert alert-info">
+    No teams found. Click "Add New Team" to get started.
+  </div>
+
+  <div *ngIf="teams.length > 0" class="table-responsive">
+    <table class="table table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let team of teams">
+          <td>{{ team.id }}</td>
+          <td>{{ team.name }}</td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn btn-outline-primary" (click)="showEditTeamForm(team)" [disabled]="loading">
+                Edit
+              </button>
+              <button type="button" class="btn btn-outline-danger" (click)="deleteTeam(team.id!)" [disabled]="loading">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
