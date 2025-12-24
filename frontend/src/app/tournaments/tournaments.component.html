@@ -1,0 +1,324 @@
+<div class="tournament-container">
+  <!-- Create Tournament View -->
+  <div *ngIf="currentView === 'create'" class="create-tournament">
+    <h2>Create New Tournament</h2>
+    <form [formGroup]="tournamentForm" (ngSubmit)="createTournament()">
+      <div class="form-group">
+        <label for="tournamentName">Tournament Name</label>
+        <input 
+          type="text" 
+          id="tournamentName" 
+          formControlName="name" 
+          class="form-control"
+          placeholder="Enter tournament name"
+          required>
+      </div>
+
+      <div class="form-group">
+        <label>Team Assignment</label>
+        <div class="form-check">
+          <input 
+            type="radio" 
+            id="teamFixed" 
+            formControlName="teamAssignment" 
+            value="fixed" 
+            class="form-check-input">
+          <label for="teamFixed" class="form-check-label">Fixed teams for all games</label>
+        </div>
+        <div class="form-check">
+          <input 
+            type="radio" 
+            id="teamRandom" 
+            formControlName="teamAssignment" 
+            value="random" 
+            class="form-check-input">
+          <label for="teamRandom" class="form-check-label">Random teams for each game</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Home/Away Assignment</label>
+        <div class="form-check">
+          <input 
+            type="radio" 
+            id="homeAwayFixed" 
+            formControlName="homeAwayAssignment" 
+            value="fixed" 
+            class="form-check-input">
+          <label for="homeAwayFixed" class="form-check-label">Fixed home/away for all games</label>
+        </div>
+        <div class="form-check">
+          <input 
+            type="radio" 
+            id="homeAwayRandom" 
+            formControlName="homeAwayAssignment" 
+            value="random" 
+            class="form-check-input">
+          <label for="homeAwayRandom" class="form-check-label">Random home/away for each game</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="roundsToPlay">Number of Rounds</label>
+        <input 
+          type="number" 
+          id="roundsToPlay" 
+          formControlName="roundsToPlay" 
+          class="form-control"
+          min="1"
+          required>
+      </div>
+
+      <div class="players-selection">
+        <h4>Select Players (min 2)</h4>
+        <div class="players-list">
+          <div 
+            *ngFor="let player of players" 
+            class="player-item"
+            [class.selected]="player.id !== undefined && isPlayerSelected(player.id)"
+            (click)="player.id !== undefined && togglePlayerSelection(player.id)">
+            {{ player.name }}
+          </div>
+        </div>
+      </div>
+
+      <button 
+        type="submit" 
+        class="btn btn-primary"
+        [disabled]="tournamentForm.invalid || selectedPlayers.length < 2 || isLoading">
+        {{ isLoading ? 'Creating...' : 'Continue to Team Selection' }}
+      </button>
+    </form>
+  </div>
+
+  <!-- Team Selection View -->
+  <div *ngIf="currentView === 'teams'" class="team-selection">
+    <h2>Team Selection</h2>
+    <p>Select teams and home/away for each player</p>
+    
+    <div class="player-selections">
+      <div *ngFor="let selection of playerSelections" class="player-selection">
+        <div class="player-info">
+          <h4>{{ getPlayerName(selection.playerId) }}</h4>
+        </div>
+        
+        <div class="form-group">
+          <label>Team</label>
+          <select 
+            [(ngModel)]="selection.teamId" 
+            [ngModelOptions]="{standalone: true}"
+            class="form-control">
+            <option value="">Select a team</option>
+            <option *ngFor="let team of teams" [value]="team.id">{{ team.name }}</option>
+          </select>
+        </div>
+        
+        <div class="form-group" *ngIf="tournamentForm.get('homeAwayAssignment')?.value === 'fixed'">
+          <label>Home/Away</label>
+          <div class="btn-group btn-group-toggle" data-toggle="buttons">
+            <label class="btn btn-outline-primary" [class.active]="selection.isHome">
+              <input 
+                type="radio" 
+                name="homeAway_{{selection.playerId}}" 
+                [value]="true" 
+                [(ngModel)]="selection.isHome"
+                [ngModelOptions]="{standalone: true}"> Home
+            </label>
+            <label class="btn btn-outline-primary" [class.active]="!selection.isHome">
+              <input 
+                type="radio" 
+                name="homeAway_{{selection.playerId}}" 
+                [value]="false" 
+                [(ngModel)]="selection.isHome"
+                [ngModelOptions]="{standalone: true}"> Away
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="form-actions">
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="currentView = 'create'">
+        Back
+      </button>
+      <button 
+        type="button" 
+        class="btn btn-primary" 
+        (click)="finalizeTournamentCreation()"
+        [disabled]="hasEmptyTeamSelections() || isLoading">
+        {{ isLoading ? 'Creating...' : 'Create Tournament' }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Tournament View -->
+  <div *ngIf="currentView === 'tournament' && currentTournament" class="tournament-view">
+    <div class="tournament-header">
+      <h2>{{ currentTournament.name }}</h2>
+      <div class="tournament-actions">
+        <button class="btn btn-primary" (click)="startNewRound()">
+          Start New Round
+        </button>
+        <button class="btn btn-danger ml-2" (click)="finishTournament()">
+          Finish Tournament
+        </button>
+      </div>
+    </div>
+
+    <div class="tournament-stats" *ngIf="stats">
+      <div class="stats-summary">
+        <div class="stat-item">
+          <span class="stat-label">Total Games:</span>
+          <span class="stat-value">{{ stats.totalGames }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Completed Games:</span>
+          <span class="stat-value">{{ stats.completedGames }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-label">Current Round:</span>
+          <span class="stat-value">{{ stats.currentRound }}</span>
+        </div>
+      </div>
+
+      <h3>Leaderboard</h3>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Player</th>
+              <th>P</th>
+              <th>W</th>
+              <th>D</th>
+              <th>L</th>
+              <th>GF</th>
+              <th>GA</th>
+              <th>GD</th>
+              <th>Pts</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let player of stats.leaderboard; let i = index">
+              <td>{{ i + 1 }}</td>
+              <td>{{ getPlayerName(player.playerId) }}</td>
+              <td>{{ player.gamesPlayed }}</td>
+              <td>{{ player.wins }}</td>
+              <td>{{ player.draws }}</td>
+              <td>{{ player.losses }}</td>
+              <td>{{ player.goalsScored }}</td>
+              <td>{{ player.goalsConceded }}</td>
+              <td>{{ player.goalsScored - player.goalsConceded }}</td>
+              <td><strong>{{ player.totalPoints }}</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="rounds-container" *ngIf="currentTournament.rounds.length > 0">
+      <h3>Rounds</h3>
+      <div *ngFor="let round of currentTournament.rounds" class="round">
+        <h4>Round {{ round.roundNumber }}</h4>
+        <div class="games-list">
+          <div *ngFor="let game of round.games" class="game-card" (click)="playGame(game)">
+            <div class="teams">
+              <div class="team home-team">
+                <span class="team-name">{{ getPlayerName(game.homePlayer.playerId) }}</span>
+                <span class="team-badge">{{ getTeamName(game.homePlayer.teamId) }}</span>
+                <span class="score" *ngIf="game.isCompleted">{{ game.homeScore }}</span>
+              </div>
+              <div class="vs">vs</div>
+              <div class="team away-team">
+                <span class="team-name">{{ getPlayerName(game.guestPlayer.playerId) }}</span>
+                <span class="team-badge">{{ getTeamName(game.guestPlayer.teamId) }}</span>
+                <span class="score" *ngIf="game.isCompleted">{{ game.guestScore }}</span>
+              </div>
+            </div>
+            <div class="game-status" [class.completed]="game.isCompleted">
+              {{ game.isCompleted ? 'Completed' : 'Click to play' }}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Game View -->
+  <div *ngIf="currentView === 'game' && currentGame" class="game-view">
+    <div class="game-header">
+      <h2>Game {{ currentGame.id }}</h2>
+      <div class="round-info">Round {{ currentRound }} of {{ currentTournament?.settings?.roundsToPlay || 1 }}</div>
+    </div>
+    
+    <div class="game-teams">
+      <div class="team home-team">
+        <h3>{{ getPlayerName(currentGame.homePlayer.playerId) }}</h3>
+        <div class="team-info">
+          <span class="team-badge">{{ getTeamName(currentGame.homePlayer.teamId) }}</span>
+          <span class="home-label">(Home)</span>
+        </div>
+        <div class="score-input">
+          <input 
+            type="number" 
+            formControlName="homeScore"
+            min="0" 
+            class="form-control"
+            placeholder="0">
+        </div>
+      </div>
+      
+      <div class="vs">vs</div>
+      
+      <div class="team away-team">
+        <h3>{{ getPlayerName(currentGame.guestPlayer.playerId) }}</h3>
+        <div class="team-info">
+          <span class="team-badge">{{ getTeamName(currentGame.guestPlayer.teamId) }}</span>
+          <span class="away-label">(Away)</span>
+        </div>
+        <div class="score-input">
+          <input 
+            type="number" 
+            formControlName="awayScore"
+            min="0" 
+            class="form-control"
+            placeholder="0">
+        </div>
+      </div>
+    </div>
+    
+    <div class="game-actions">
+      <button 
+        class="btn btn-secondary" 
+        (click)="cancelGame()">
+        Cancel
+      </button>
+      <button 
+        class="btn btn-primary" 
+        (click)="submitGameScore()"
+        [disabled]="scoreForm.invalid">
+        Save Score
+      </button>
+    </div>
+    
+    <div class="game-progress" *ngIf="currentTournament">
+      <div class="progress">
+        <div 
+          class="progress-bar" 
+          role="progressbar" 
+          [style.width]="(getCompletedGamesCount() / getTotalGamesCount() * 100) + '%'"
+          [attr.aria-valuenow]="getCompletedGamesCount()"
+          [attr.aria-valuemin]="0"
+          [attr.aria-valuemax]="getTotalGamesCount()">
+          {{ getCompletedGamesCount() }} / {{ getTotalGamesCount() }} games
+        </div>
+      </div>
+      <div class="progress-text">
+        Round {{ currentRound }} progress
+      </div>
+    </div>
+  </div>
+</div>
