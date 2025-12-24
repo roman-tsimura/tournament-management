@@ -37,17 +37,14 @@ export class PlayersComponent implements OnInit {
   loadPlayers(): void {
     this.loading = true;
     this.error = null;
-    console.log('Loading players...');
 
     this.playerService.getPlayers().subscribe({
       next: (data) => {
-        console.log('Players loaded:', data);
         this.players = [...data];
         this.loading = false;
-        this.cdr.markForCheck(); // Use markForCheck instead of detectChanges
+        this.cdr.markForCheck();
       },
       error: (err) => {
-        console.error('Error loading players:', err);
         this.error = 'Failed to load players. Please try again later.';
         this.loading = false;
         this.cdr.markForCheck();
@@ -90,7 +87,6 @@ export class PlayersComponent implements OnInit {
   }
 
   private handleSaveSuccess(): void {
-    console.log('Player saved successfully, reloading players...');
     this.loadPlayers();
     this.showAddForm = false;
     this.editingPlayer = null;
@@ -98,7 +94,6 @@ export class PlayersComponent implements OnInit {
   }
 
   private handleSaveError(err: any, action: 'add' | 'update'): void {
-    console.error(`Error ${action}ing player:`, err);
     this.error = `Failed to ${action} player: ${err.message || 'Unknown error'}`;
     this.loading = false;
     this.cdr.markForCheck();
@@ -126,7 +121,6 @@ export class PlayersComponent implements OnInit {
           }
           this.cancelEdit();
         } catch (error) {
-          console.error('Error processing update:', error);
           this.error = 'Error processing player update';
         } finally {
           this.loading = false;
@@ -137,7 +131,6 @@ export class PlayersComponent implements OnInit {
         this.error = 'Failed to update player';
         this.loading = false;
         this.cdr.markForCheck();
-        console.error('Error updating player:', err);
       }
     });
   }
@@ -154,7 +147,6 @@ export class PlayersComponent implements OnInit {
           this.players = this.players.filter(p => p.id !== id);
           this.cdr.markForCheck();
         } catch (error) {
-          console.error('Error processing deletion:', error);
           this.error = 'Error processing player deletion';
         } finally {
           this.loading = false;
@@ -165,7 +157,6 @@ export class PlayersComponent implements OnInit {
         this.error = 'Failed to delete player';
         this.loading = false;
         this.cdr.markForCheck();
-        console.error('Error deleting player:', err);
       }
     });
   }

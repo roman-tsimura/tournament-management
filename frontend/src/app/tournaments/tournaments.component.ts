@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
-import { Tournament, TournamentParticipant, TournamentStats, TournamentSettings, Game, TeamAssignment } from '../models/tournament.model';
+import { Tournament, TournamentStats, TournamentSettings, Game } from '../models/tournament.model';
 import { TournamentService } from '../services/tournament.service';
 import { Player } from '../models/player.model';
 import { Team } from '../models/team.model';
@@ -46,9 +46,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
   
   set currentView(value: TournamentView) {
-    console.log(`Changing view from ${this._currentView} to ${value}`);
     this._currentView = value;
-    console.log(`View changed to: ${this._currentView}`);
   }
   
   tournaments: Tournament[] = [];
@@ -60,7 +58,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   // currentView is now a getter/setter with _currentView as the backing field
   currentGame: Game | null = null;
   currentRound: number = 1;
-  stats: any = null;
+  stats: TournamentStats | null = null;
   tournamentForm: FormGroup;
   page = 1;
   pageSize = 10;
@@ -92,7 +90,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    console.log('TournamentsComponent initialized');
     this._currentView = 'list';
     
     // Initial data load
@@ -103,7 +100,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       filter(event => event instanceof NavigationEnd)
     ).subscribe(() => {
       if (this.router.url === '/tournaments') {
-        console.log('Navigation to /tournaments detected, reloading data');
         this.loadInitialData();
       }
     });
@@ -116,37 +112,27 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   private loadInitialData(): void {
-    console.log('Loading initial data...');
     this.isLoading = true;
     
     // Reset the view to ensure proper rendering
     this._currentView = 'list';
     
-    // Force change detection
-    this.changeDetector.detectChanges();
-    
-    // Load data in parallel
     Promise.all([
       this.loadTournaments(),
       this.loadPlayers(),
       this.loadTeams()
-    ]).catch(error => {
-      console.error('Error loading initial data:', error);
+    ]).catch(() => {
       this.isLoading = false;
       this.changeDetector.detectChanges();
     });
   }
 
   loadTournaments(): Promise<void> {
-    console.log('Starting to load tournaments...');
-    
     return new Promise((resolve) => {
       this.tournamentService.getAllTournaments().subscribe({
         next: (tournaments) => {
-          console.log('Tournaments received:', tournaments);
           this.tournaments = Array.isArray(tournaments) ? tournaments : [];
           this.collectionSize = this.tournaments.length;
-          console.log(`Loaded ${this.tournaments.length} tournaments`);
           this.isLoading = false;
           
           // Force change detection after a small delay
@@ -156,17 +142,11 @@ export class TournamentsComponent implements OnInit, OnDestroy {
           
           resolve();
         },
-        error: (error) => {
-          console.error('Error loading tournaments:', error);
+        error: () => {
           this.tournaments = [];
           this.collectionSize = 0;
           this.isLoading = false;
-          
-          // Force change detection
-          setTimeout(() => {
-            this.changeDetector.detectChanges();
-          }, 0);
-          
+          this.changeDetector.detectChanges();
           resolve();
         }
       });
@@ -190,7 +170,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     try {
       this.players = await this.playerService.getPlayers().toPromise() || [];
     } catch (error) {
-      console.error('Error loading players:', error);
+      // Silently handle error
     }
   }
 
@@ -198,7 +178,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     try {
       this.teams = await this.teamService.getTeams().toPromise() || [];
     } catch (error) {
-      console.error('Error loading teams:', error);
+      // Silently handle error
     }
   }
 
@@ -270,7 +250,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       this.currentView = 'tournament';
       this.loadTournamentStats();
     } catch (error) {
-      console.error('Error creating tournament:', error);
       alert('Failed to create tournament');
     } finally {
       this.isLoading = false;
@@ -279,11 +258,11 @@ export class TournamentsComponent implements OnInit, OnDestroy {
 
   async loadTournamentStats(): Promise<void> {
     if (!this.currentTournament) return;
-    
+
     try {
       this.stats = await this.tournamentService.getTournamentStats(this.currentTournament.id).toPromise() || null;
     } catch (error) {
-      console.error('Error loading tournament stats:', error);
+      // Silently handle error
     }
   }
 
@@ -318,7 +297,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         this.loadTournamentStats();
       },
       error: (error) => {
-        console.error('Error starting new round:', error);
         alert('Failed to start new round');
       }
     });
@@ -352,7 +330,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         this.loadTournamentStats();
       },
       error: (error) => {
-        console.error('Error updating game score:', error);
         alert('Failed to update game score');
       }
     });
@@ -424,7 +401,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
           this.loadTournamentStats();
         },
         error: (error) => {
-          console.error('Error completing tournament:', error);
           alert('Failed to complete tournament');
         }
       });

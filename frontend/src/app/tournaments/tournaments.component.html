@@ -24,16 +24,7 @@
     </div>
     }
 
-    @if (!isLoading) {
-    <div>
-      <div class="alert alert-info mb-3">
-        Debug Info: 
-        isLoading: {{isLoading}}, 
-        tournaments.length: {{tournaments.length}}, 
-        currentView: {{currentView}}
-      </div>
-      
-      @if (tournaments.length > 0) {
+    @if (!isLoading && tournaments.length > 0) {
       <div class="table-responsive">
         <table class="table table-hover">
           <thead class="table-light">
@@ -103,8 +94,6 @@
       </ngb-pagination>
     </div>
     }
-    }
-  </div>
   }
 
   <!-- Create Tournament View -->
