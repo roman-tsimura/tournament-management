@@ -22,6 +22,8 @@ export class PlayersComponent implements OnInit {
   newPlayer: Player = {
     name: ''
   };
+  
+  currentPlayerName = '';
 
   constructor(
     private playerService: PlayerService,
@@ -53,29 +55,59 @@ export class PlayersComponent implements OnInit {
     });
   }
 
+  showAddPlayerForm(): void {
+    this.showAddForm = true;
+    this.editingPlayer = null;
+    this.currentPlayerName = '';
+  }
+
+  cancelForm(): void {
+    this.showAddForm = false;
+    this.editingPlayer = null;
+    this.currentPlayerName = '';
+    this.error = null;
+  }
+
   addPlayer(): void {
-    if (!this.newPlayer.name) return;
+    if (!this.currentPlayerName) return;
 
     this.loading = true;
-    this.playerService.createPlayer(this.newPlayer).subscribe({
-      next: (player) => {
-        console.log('Player added successfully, reloading players...');
-        // Instead of trying to update the array directly,
-        // reload the entire players list from the server
-        this.loadPlayers();
-        this.newPlayer = { name: '' };
-        this.showAddForm = false;
-      },
-      error: (err) => {
-        console.error('Error adding player:', err);
-        this.error = `Failed to add player: ${err.message || 'Unknown error'}`;
-        this.loading = false;
-      }
-    });
+    
+    if (this.editingPlayer) {
+      this.playerService.updatePlayer(this.editingPlayer.id!, { name: this.currentPlayerName })
+        .subscribe({
+          next: (player) => this.handleSaveSuccess(),
+          error: (err) => this.handleSaveError(err, 'update')
+        });
+    } else {
+      this.playerService.createPlayer({ name: this.currentPlayerName })
+        .subscribe({
+          next: (player) => this.handleSaveSuccess(),
+          error: (err) => this.handleSaveError(err, 'add')
+        });
+    }
+
+  }
+
+  private handleSaveSuccess(): void {
+    console.log('Player saved successfully, reloading players...');
+    this.loadPlayers();
+    this.showAddForm = false;
+    this.editingPlayer = null;
+    this.currentPlayerName = '';
+  }
+
+  private handleSaveError(err: any, action: 'add' | 'update'): void {
+    console.error(`Error ${action}ing player:`, err);
+    this.error = `Failed to ${action} player: ${err.message || 'Unknown error'}`;
+    this.loading = false;
+    this.cdr.markForCheck();
   }
 
   editPlayer(player: Player): void {
     this.editingPlayer = { ...player };
+    this.currentPlayerName = player.name;
+    this.showAddForm = true;
   }
 
   updatePlayer(): void {
@@ -140,6 +172,7 @@ export class PlayersComponent implements OnInit {
 
   cancelEdit(): void {
     this.editingPlayer = null;
-    this.cdr.detectChanges();
+    this.showAddForm = false;
+    this.cdr.markForCheck();
   }
 }

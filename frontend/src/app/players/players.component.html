@@ -1,92 +1,83 @@
-<div class="container">
-    <h2>Players</h2>
+<div class="players-container">
+  <h2>Players Management</h2>
+  
+  <div *ngIf="error" class="alert alert-danger">
+    {{ error }}
+    <button type="button" class="close" (click)="error = null">&times;</button>
+  </div>
 
-    <!-- Loading and Error States -->
-    @if (loading) {
-        <div class="alert alert-info">Loading players...</div>
-    }
-    @if (error) {
-        <div class="alert alert-danger">{{ error }}</div>
-    }
+  <div class="mb-3">
+    <button class="btn btn-primary" (click)="showAddPlayerForm()" [disabled]="loading">
+      <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+      Add New Player
+    </button>
+  </div>
 
-    <div class="mb-4">
-        <button (click)="showAddForm = !showAddForm" class="btn btn-primary mb-3">
-            {{ showAddForm ? 'Cancel' : 'Add New Player' }}
-        </button>
-
-        @if (showAddForm) {
-            <div class="card mb-4">
-                <div class="card-body">
-                    <h5 class="card-title">Add New Player</h5>
-                    <form (ngSubmit)="addPlayer()" #playerForm="ngForm">
-                        <div class="mb-3">
-                            <label for="name" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="name" [(ngModel)]="newPlayer.name" name="name" required>
-                        </div>
-                        <button type="submit" class="btn btn-success" [disabled]="!playerForm.form.valid">
-                            Add Player
-                        </button>
-                    </form>
-                </div>
-            </div>
-        }
-
-        <div class="table-responsive">
-            <table class="table table-striped">
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                    @for (player of players; track player.id) {
-                        <tr>
-                            <td>{{ player.id }}</td>
-                            <td>{{ player.name }}</td>
-                            <td>
-                                <button (click)="editPlayer(player)" class="btn btn-sm btn-warning me-2">Edit</button>
-                                <button (click)="deletePlayer(player.id!)" class="btn btn-sm btn-danger">Delete</button>
-                            </td>
-                        </tr>
-                    } @empty {
-                        @if (!loading) {
-                            <tr>
-                                <td colspan="3" class="text-center">No players found</td>
-                            </tr>
-                        }
-                    }
-                </tbody>
-            </table>
-        </div>
+  <div *ngIf="showAddForm" class="card mb-4">
+    <div class="card-header">
+      <h5 class="mb-0">{{ editingPlayer ? 'Edit Player' : 'Add New Player' }}</h5>
     </div>
+    <div class="card-body">
+      <form (ngSubmit)="addPlayer()" #playerForm="ngForm">
+        <div class="mb-3">
+          <label for="name" class="form-label">Name *</label>
+          <input 
+            type="text" 
+            class="form-control" 
+            id="name" 
+            name="name" 
+            [(ngModel)]="currentPlayerName" 
+            required>
+        </div>
+        <div class="d-flex justify-content-end gap-2">
+          <button type="button" class="btn btn-outline-secondary" (click)="cancelForm()" [disabled]="loading">
+            Cancel
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="loading || !playerForm.form.valid">
+            <span *ngIf="loading" class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+            {{ editingPlayer ? 'Update' : 'Save' }} Player
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div *ngIf="loading && !showAddForm" class="text-center my-4">
+    <div class="spinner-border" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2">Loading players...</p>
+  </div>
+
+  <div *ngIf="!loading && players.length === 0 && !showAddForm" class="alert alert-info">
+    No players found. Click "Add New Player" to get started.
+  </div>
+
+  <div *ngIf="players.length > 0" class="table-responsive">
+    <table class="table table-hover">
+      <thead class="table-light">
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let player of players">
+          <td>{{ player.id }}</td>
+          <td>{{ player.name }}</td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm" role="group">
+              <button type="button" class="btn btn-outline-primary" (click)="editPlayer(player)" [disabled]="loading">
+                Edit
+              </button>
+              <button type="button" class="btn btn-outline-danger" (click)="deletePlayer(player.id!)" [disabled]="loading">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
 </div>
-
-@if (editingPlayer) {
-    <div class="modal fade show" style="display: block; background: rgba(0,0,0,0.5);">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Edit Player</h5>
-                    <button type="button" class="btn-close" (click)="cancelEdit()"></button>
-                </div>
-                <div class="modal-body">
-                    <form (ngSubmit)="updatePlayer()" #editForm="ngForm">
-                        <div class="mb-3">
-                            <label for="editName" class="form-label">Name</label>
-                            <input type="text" class="form-control" id="editName"
-                                   [(ngModel)]="editingPlayer.name" name="name" required>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" (click)="cancelEdit()">Cancel</button>
-                            <button type="submit" class="btn btn-primary" [disabled]="!editForm.form.valid">
-                                Save Changes
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-}
