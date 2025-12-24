@@ -82,19 +82,29 @@ export class PlayersComponent implements OnInit {
     if (!this.editingPlayer) return;
 
     this.loading = true;
+    this.error = null;
+    
     this.playerService.updatePlayer(this.editingPlayer.id!, this.editingPlayer).subscribe({
       next: (updatedPlayer) => {
-        const index = this.players.findIndex(p => p.id === updatedPlayer.id);
-        if (index !== -1) {
-          this.players[index] = updatedPlayer;
-          this.players = [...this.players];
+        try {
+          const index = this.players.findIndex(p => p.id === updatedPlayer.id);
+          if (index !== -1) {
+            this.players[index] = updatedPlayer;
+            this.players = [...this.players];
+          }
+          this.cancelEdit();
+        } catch (error) {
+          console.error('Error processing update:', error);
+          this.error = 'Error processing player update';
+        } finally {
+          this.loading = false;
+          this.cdr.markForCheck();
         }
-        this.cancelEdit();
-        this.loading = false;
       },
       error: (err) => {
         this.error = 'Failed to update player';
         this.loading = false;
+        this.cdr.markForCheck();
         console.error('Error updating player:', err);
       }
     });
