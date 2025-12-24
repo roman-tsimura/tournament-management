@@ -114,15 +114,25 @@ export class PlayersComponent implements OnInit {
     if (!confirm('Are you sure you want to delete this player?')) return;
 
     this.loading = true;
+    this.error = null;
+    
     this.playerService.deletePlayer(id).subscribe({
       next: () => {
-        this.players = this.players.filter(p => p.id !== id);
-        this.cdr.detectChanges();
-        this.loading = false;
+        try {
+          this.players = this.players.filter(p => p.id !== id);
+          this.cdr.markForCheck();
+        } catch (error) {
+          console.error('Error processing deletion:', error);
+          this.error = 'Error processing player deletion';
+        } finally {
+          this.loading = false;
+          this.cdr.markForCheck();
+        }
       },
       error: (err) => {
         this.error = 'Failed to delete player';
         this.loading = false;
+        this.cdr.markForCheck();
         console.error('Error deleting player:', err);
       }
     });
