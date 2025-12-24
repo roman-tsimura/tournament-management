@@ -2,19 +2,18 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { HttpClientModule } from '@angular/common/http';
-import { FormsModule } from '@angular/forms';
+import { RouterModule } from '@angular/router';
 
 import { AppComponent } from './app.component';
-import { PlayersComponent } from './players/players.component';
+import { routes } from './app.routes';
 
 @NgModule({
   declarations: [],
   imports: [
     BrowserModule,
     HttpClientModule,
-    FormsModule,
-    AppComponent,
-    PlayersComponent
+    RouterModule.forRoot(routes),
+    AppComponent
   ],
   providers: [],
   bootstrap: [AppComponent]

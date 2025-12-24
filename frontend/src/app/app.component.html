@@ -1,0 +1,43 @@
+<div class="app-container">
+  <header class="app-header">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+      <div class="container">
+        <a class="navbar-brand" routerLink="/">Tournament Manager</a>
+        <button class="navbar-toggler" type="button" (click)="isNavCollapsed = !isNavCollapsed" [attr.aria-expanded]="!isNavCollapsed" aria-controls="navbarNav" aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" [ngbCollapse]="isNavCollapsed" id="navbarNav">
+          <ul class="navbar-nav me-auto">
+            <li class="nav-item">
+              <a class="nav-link" [routerLink]="['/tournament']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">
+                <i class="fas fa-trophy me-1"></i> Tournaments
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [routerLink]="['/players']" routerLinkActive="active">
+                <i class="fas fa-users me-1"></i> Players
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" [routerLink]="['/teams']" routerLinkActive="active">
+                <i class="fas fa-shield-alt me-1"></i> Teams
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+  </header>
+
+  <main class="app-content">
+    <div class="container py-4">
+      <router-outlet></router-outlet>
+    </div>
+  </main>
+
+  <footer class="app-footer bg-light mt-auto py-3">
+    <div class="container text-center">
+      <span class="text-muted">© 2025 Tournament Manager. All rights reserved.</span>
+    </div>
+  </footer>
+</div>
