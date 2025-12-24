@@ -24,7 +24,7 @@ import { NgbCollapseModule } from '@ng-bootstrap/ng-bootstrap';
           <div class="collapse navbar-collapse" [ngbCollapse]="isNavCollapsed" id="navbarNav">
             <ul class="navbar-nav">
               <li class="nav-item">
-                <a class="nav-link" [routerLink]="['/tournament']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Tournament</a>
+                <a class="nav-link" [routerLink]="['/tournaments']" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">Tournaments</a>
               </li>
               <li class="nav-item">
                 <a class="nav-link" [routerLink]="['/players']" routerLinkActive="active">Players</a>

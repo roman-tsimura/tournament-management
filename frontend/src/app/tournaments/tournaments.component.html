@@ -1,8 +1,119 @@
 <div class="tournament-container">
+  <!-- List Tournaments View -->
+  @if (currentView === 'list') {
+  <div class="tournament-list">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h2>Tournaments</h2>
+      <button class="btn btn-primary" (click)="createNewTournament()">
+        <i class="bi bi-plus-circle"></i> Create New Tournament
+      </button>
+    </div>
+
+    @if (isLoading) {
+    <div class="text-center my-5">
+      <div class="spinner-border" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </div>
+    } @else if (tournaments.length === 0) {
+    <div class="alert alert-info">
+      No tournaments found. Create a new tournament to get started!
+    </div>
+    }
+
+    @if (!isLoading) {
+    <div>
+      <div class="alert alert-info mb-3">
+        Debug Info: 
+        isLoading: {{isLoading}}, 
+        tournaments.length: {{tournaments.length}}, 
+        currentView: {{currentView}}
+      </div>
+      
+      @if (tournaments.length > 0) {
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead class="table-light">
+            <tr>
+              <th>Name</th>
+              <th>Status</th>
+              <th>Created</th>
+              <th>Updated</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (tournament of tournaments | slice: (page-1) * pageSize : (page-1) * pageSize + pageSize; track tournament.id) {
+            <tr>
+              <td>{{ tournament.name }}</td>
+              <td>
+                <span class="badge" 
+                      [ngClass]="{
+                        'bg-warning': tournament.status === 'pending',
+                        'bg-primary': tournament.status === 'in_progress',
+                        'bg-success': tournament.status === 'completed'
+                      }">
+                  {{ tournament.status | titlecase }}
+                </span>
+              </td>
+              <td>{{ tournament.createdAt | date:'medium' }}</td>
+              <td>{{ tournament.updatedAt | date:'medium' }}</td>
+              <td>
+                <button class="btn btn-sm btn-outline-primary me-2" 
+                        (click)="viewTournament(tournament.id)">
+                  View
+                </button>
+              </td>
+            </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      } @else {
+      <table class="table table-hover d-none">
+        <thead class="table-light">
+          <tr>
+            <th>Name</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th>Updated</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="alert alert-info">
+        No tournaments found. Create a new tournament to get started!
+      </div>
+      }
+    </div>
+    @if (tournaments.length > 0 && collectionSize > pageSize) {
+    <div class="d-flex justify-content-center mt-3">
+      <ngb-pagination 
+        [(page)]="page" 
+        [pageSize]="pageSize" 
+        [collectionSize]="collectionSize"
+        [maxSize]="5"
+        [rotate]="true"
+        [ellipses]="false"
+        [boundaryLinks]="true">
+      </ngb-pagination>
+    </div>
+    }
+    }
+  </div>
+  }
+
   <!-- Create Tournament View -->
-  <div *ngIf="currentView === 'create'" class="create-tournament">
-    <h2>Create New Tournament</h2>
-    <form [formGroup]="tournamentForm" (ngSubmit)="createTournament()">
+  @if (currentView === 'create') {
+  <div class="create-tournament">
+    <div class="d-flex align-items-center mb-4">
+      <button class="btn btn-link p-0 me-3" (click)="onBackToList()">
+        <i class="bi bi-arrow-left"></i> Back to List
+      </button>
+      <h2 class="mb-0">Create New Tournament</h2>
+    </div>
+    <form [formGroup]="tournamentForm" (ngSubmit)="createTournament()" class="needs-validation" novalidate>
       <div class="form-group">
         <label for="tournamentName">Tournament Name</label>
         <input 
@@ -90,14 +201,17 @@
       </button>
     </form>
   </div>
+  }
 
-  <!-- Team Selection View -->
-  <div *ngIf="currentView === 'teams'" class="team-selection">
+  <!-- Teams Selection View -->
+  @if (currentView === 'teams') {
+  <div class="team-selection">
     <h2>Team Selection</h2>
     <p>Select teams and home/away for each player</p>
     
     <div class="player-selections">
-      <div *ngFor="let selection of playerSelections" class="player-selection">
+      @for (selection of playerSelections; track selection.playerId) {
+    <div class="player-selection">
         <div class="player-info">
           <h4>{{ getPlayerName(selection.playerId) }}</h4>
         </div>
@@ -135,7 +249,7 @@
           </div>
         </div>
       </div>
-    </div>
+    }
     
     <div class="form-actions">
       <button 
@@ -153,9 +267,12 @@
       </button>
     </div>
   </div>
+  </div>
+  }
 
-  <!-- Tournament View -->
-  <div *ngIf="currentView === 'tournament' && currentTournament" class="tournament-view">
+  <!-- Tournament Detail View -->
+  @if (currentView === 'tournament' && currentTournament) {
+  <div class="tournament-view">
     <div class="tournament-header">
       <h2>{{ currentTournament.name }}</h2>
       <div class="tournament-actions">
@@ -246,68 +363,80 @@
       </div>
     </div>
   </div>
+  }
 
   <!-- Game View -->
-  <div *ngIf="currentView === 'game' && currentGame" class="game-view">
+  @if (currentView === 'game' && currentGame) {
+  <div class="game-view">
     <div class="game-header">
       <h2>Game {{ currentGame.id }}</h2>
       <div class="round-info">Round {{ currentRound }} of {{ currentTournament?.settings?.roundsToPlay || 1 }}</div>
     </div>
     
-    <div class="game-teams">
-      <div class="team home-team">
-        <h3>{{ getPlayerName(currentGame.homePlayer.playerId) }}</h3>
-        <div class="team-info">
-          <span class="team-badge">{{ getTeamName(currentGame.homePlayer.teamId) }}</span>
-          <span class="home-label">(Home)</span>
+    <form [formGroup]="scoreForm" (ngSubmit)="submitGameScore()" class="game-form">
+      <div class="game-teams">
+        <div class="team home-team">
+          <h3>{{ getPlayerName(currentGame.homePlayer.playerId) }}</h3>
+          <div class="team-info">
+            <span class="team-badge">{{ getTeamName(currentGame.homePlayer.teamId) }}</span>
+            <span class="home-label">(Home)</span>
+          </div>
+          <div class="score-input">
+            <input 
+              type="number" 
+              formControlName="homeScore"
+              min="0" 
+              class="form-control"
+              placeholder="0"
+              required>
+          </div>
         </div>
-        <div class="score-input">
-          <input 
-            type="number" 
-            formControlName="homeScore"
-            min="0" 
-            class="form-control"
-            placeholder="0">
+        
+        <div class="vs">vs</div>
+        
+        <div class="team away-team">
+          <h3>{{ getPlayerName(currentGame.guestPlayer.playerId) }}</h3>
+          <div class="team-info">
+            <span class="team-badge">{{ getTeamName(currentGame.guestPlayer.teamId) }}</span>
+            <span class="away-label">(Away)</span>
+          </div>
+          <div class="score-input">
+            <input 
+              type="number" 
+              formControlName="awayScore"
+              min="0" 
+              class="form-control"
+              placeholder="0"
+              required>
+          </div>
         </div>
       </div>
       
-      <div class="vs">vs</div>
-      
-      <div class="team away-team">
-        <h3>{{ getPlayerName(currentGame.guestPlayer.playerId) }}</h3>
-        <div class="team-info">
-          <span class="team-badge">{{ getTeamName(currentGame.guestPlayer.teamId) }}</span>
-          <span class="away-label">(Away)</span>
-        </div>
-        <div class="score-input">
-          <input 
-            type="number" 
-            formControlName="awayScore"
-            min="0" 
-            class="form-control"
-            placeholder="0">
-        </div>
+      <div class="game-actions mt-4">
+        <button 
+          type="button"
+          class="btn btn-secondary me-2" 
+          (click)="cancelGame()">
+          Cancel
+        </button>
+        <button 
+          type="submit"
+          class="btn btn-primary" 
+          [disabled]="scoreForm.invalid || isLoading">
+          @if (!isLoading) {
+          <span>Save Score</span>
+          } @else {
+          <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+          }
+        </button>
       </div>
-    </div>
+    </form>
     
-    <div class="game-actions">
-      <button 
-        class="btn btn-secondary" 
-        (click)="cancelGame()">
-        Cancel
-      </button>
-      <button 
-        class="btn btn-primary" 
-        (click)="submitGameScore()"
-        [disabled]="scoreForm.invalid">
-        Save Score
-      </button>
-    </div>
-    
-    <div class="game-progress" *ngIf="currentTournament">
+    @if (currentTournament) {
+    <div class="game-progress mt-4">
       <div class="progress">
         <div 
-          class="progress-bar" 
+          class="progress-bar progress-bar-striped progress-bar-animated" 
           role="progressbar" 
           [style.width]="(getCompletedGamesCount() / getTotalGamesCount() * 100) + '%'"
           [attr.aria-valuenow]="getCompletedGamesCount()"
@@ -316,9 +445,11 @@
           {{ getCompletedGamesCount() }} / {{ getTotalGamesCount() }} games
         </div>
       </div>
-      <div class="progress-text">
-        Round {{ currentRound }} progress
+      <div class="progress-text text-center mt-2">
+        <strong>Round {{ currentRound }} Progress</strong>
       </div>
     </div>
+    }
   </div>
+  }
 </div>
