@@ -21,7 +21,7 @@ import { Player } from '../models/player.model';
 import { Team } from '../models/team.model';
 import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
-import { NgbPaginationModule, NgbModal, NgbModalRef, NgbTooltip, NgbDropdownModule, NgbNavModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbPaginationModule, NgbModal, NgbModalRef, NgbDropdownModule, NgbNavModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { DatePipe } from '@angular/common';
 import { filter, switchMap, tap, catchError, finalize } from 'rxjs/operators';
 import { Subscription, of } from 'rxjs';
@@ -42,12 +42,10 @@ export interface GameWithSelection extends Game {
     ReactiveFormsModule,
     RouterModule,
     RouterLink,
-    NgbTooltip,
     NgbDropdownModule,
     NgbNavModule,
     NgbTypeaheadModule,
     NgbPaginationModule,
-    ConfirmDialogComponent,
     DatePipe
   ],
   templateUrl: './tournaments.component.html',

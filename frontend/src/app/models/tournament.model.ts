@@ -6,7 +6,7 @@ export interface TournamentSettings {
 export interface Tournament {
   id: string;
   name: string;
-  games: Game[];
+  games?: Game[];  // Made optional with '?'
   players: TournamentPlayer[];
   teams: TournamentTeam[];
   settings: TournamentSettings;
