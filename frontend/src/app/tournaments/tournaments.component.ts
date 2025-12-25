@@ -3,7 +3,7 @@ import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
-import { RouterModule, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute, NavigationEnd, RouterLink } from '@angular/router';
 import {
   Tournament,
   TournamentStats,
@@ -21,7 +21,7 @@ import { Player } from '../models/player.model';
 import { Team } from '../models/team.model';
 import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
-import { NgbPaginationModule, NgbModal, NgbModalRef } from '@ng-bootstrap/ng-bootstrap';
+import { NgbPaginationModule, NgbModal, NgbModalRef, NgbTooltip, NgbDropdownModule, NgbNavModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { DatePipe } from '@angular/common';
 import { filter, switchMap, tap, catchError, finalize } from 'rxjs/operators';
 import { Subscription, of } from 'rxjs';
@@ -41,6 +41,11 @@ export interface GameWithSelection extends Game {
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
+    RouterLink,
+    NgbTooltip,
+    NgbDropdownModule,
+    NgbNavModule,
+    NgbTypeaheadModule,
     NgbPaginationModule,
     ConfirmDialogComponent,
     DatePipe
@@ -170,30 +175,43 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   updateView(): void {
-    const url = this.router.url;
+    // Get the current route snapshot
+    const route = this.route.snapshot;
     
-    if (url.includes('/create')) {
-      this.currentView = 'create';
-    } else if (this.route.firstChild) {
-      // Handle child route with ID
-      this.currentView = 'tournament';
-      const id = this.route.firstChild.snapshot.paramMap.get('id');
-      if (id && id !== this.tournamentId) {
-        this.tournamentId = id;
-        this.loadTournament();
-      }
-    } else if (url.startsWith('/tournaments/')) {
-      // Handle direct URL access to tournament
-      this.currentView = 'tournament';
-      const id = url.split('/').pop();
-      if (id && id !== this.tournamentId) {
-        this.tournamentId = id;
-        this.loadTournament();
+    // Check if we're on a child route
+    if (route.firstChild) {
+      const childRoute = route.firstChild;
+      
+      // Get the view from route data
+      const view = childRoute.data['view'] as TournamentView;
+      
+      if (view === 'tournament' || childRoute.url.some(segment => segment.path.startsWith('tournament/'))) {
+        // Handle tournament view
+        this._currentView = 'tournament';
+        this.tournamentId = childRoute.paramMap.get('id');
+        
+        if (this.tournamentId) {
+          this.loadTournament();
+        } else {
+          this.router.navigate(['/tournaments']);
+        }
+      } else if (view === 'create') {
+        // Handle create view
+        this._currentView = 'create';
+        this.loadPlayers();
+        this.loadTeams();
+      } else {
+        // Default to list view
+        this._currentView = 'list';
+        this.loadTournaments();
       }
     } else {
-      this.currentView = 'list';
+      // No child route, default to list view
+      this._currentView = 'list';
       this.loadTournaments();
     }
+    
+    this.cdr.detectChanges();
   }
 
   ngOnDestroy(): void {
@@ -203,50 +221,82 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   loadTournament(): void {
-    if (!this.tournamentId) return;
+    // Get the ID from the route if not already set
+    const idFromRoute = this.route.snapshot.firstChild?.paramMap.get('id');
+    this.tournamentId = this.tournamentId !== null ? this.tournamentId : (idFromRoute || null);
+    
+    if (!this.tournamentId) {
+      console.error('No tournament ID provided');
+      this.router.navigate(['/tournaments']);
+      return;
+    }
 
     this.isLoading = true;
+    this.cdr.detectChanges(); // Update the view to show loading state
 
     // Reset the game form when loading a tournament
     this.initNewGame();
 
     this.tournamentService.getTournament(this.tournamentId)
-        .pipe(
-            tap((tournament) => {
-              this.currentTournament = tournament;
-              this.games = tournament.games?.map(g => ({ ...g, isExpanded: false })) || [];
-            }),
-            // Load all players using PlayerService
-            switchMap(() => this.playerService.getPlayers()),
-            tap((players) => {
-              // Map Player[] to PlayerSelection[] to match the expected type
-              this.availablePlayers = (players || []).map(player => ({
-                id: player.id?.toString() || '',
-                name: `${player.name}`.trim()
-              }));
-              console.log('Players loaded:', this.availablePlayers);
-            }),
-            // Load available teams for the tournament
-            switchMap(() => this.teamService.getTeams()),
-            tap((teams) => {
-              this.availableTeams = (teams || []).map(team => ({
-                id: team.id?.toString() || '',
-                name: team.name
-              }));
-              this.filteredHomeTeams = [...this.availableTeams];
-              this.filteredGuestTeams = [...this.availableTeams];
-              console.log('Teams loaded:', this.availableTeams);
-            }),
-            catchError((error) => {
-              console.error('Error loading tournament data:', error);
-              return of(null);
-            }),
-            finalize(() => {
-              this.isLoading = false;
-              this.cdr.detectChanges();
-            })
-        )
-        .subscribe();
+      .pipe(
+        tap({
+          next: (tournament) => {
+            if (!tournament) {
+              throw new Error('Tournament not found');
+            }
+            this.currentTournament = tournament;
+            this.games = tournament.games?.map(g => ({ ...g, isExpanded: false })) || [];
+            this._currentView = 'tournament';
+          },
+          error: (error) => {
+            console.error('Error loading tournament:', error);
+            this.router.navigate(['/tournaments']);
+          }
+        }),
+        // Load all players using PlayerService
+        switchMap(() => this.playerService.getPlayers()),
+        tap({
+          next: (players) => {
+            // Map Player[] to PlayerSelection[] to match the expected type
+            this.availablePlayers = (players || []).map(player => ({
+              id: player.id?.toString() || '',
+              name: `${player.name}`.trim()
+            }));
+            console.log('Players loaded:', this.availablePlayers);
+          },
+          error: (error) => {
+            console.error('Error loading players:', error);
+            // Continue even if players fail to load
+          }
+        }),
+        // Load available teams for the tournament
+        switchMap(() => this.teamService.getTeams()),
+        tap({
+          next: (teams) => {
+            this.availableTeams = (teams || []).map(team => ({
+              id: team.id?.toString() || '',
+              name: team.name
+            }));
+            this.filteredHomeTeams = [...this.availableTeams];
+            this.filteredGuestTeams = [...this.availableTeams];
+            console.log('Teams loaded:', this.availableTeams);
+          },
+          error: (error) => {
+            console.error('Error loading teams:', error);
+            // Continue even if teams fail to load
+          }
+        }),
+        catchError((error) => {
+          console.error('Error in tournament data stream:', error);
+          this.router.navigate(['/tournaments']);
+          return of(null);
+        }),
+        finalize(() => {
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe();
   }
 
   initNewGame(): void {
@@ -435,60 +485,98 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadTournaments(): Promise<void> {
+  async loadTournaments(): Promise<void> {
     this.isLoading = true;
     return new Promise((resolve) => {
       this.tournamentService.getAllTournaments()
-          .pipe(
-              finalize(() => {
-                this.isLoading = false;
-                this.cdr.detectChanges();
-              })
-          )
-          .subscribe({
-            next: (tournaments) => {
-              this.tournaments = tournaments || [];
-              this.collectionSize = this.tournaments.length;
-              resolve();
-            },
-            error: (error) => {
-              console.error('Error loading tournaments:', error);
-              this.tournaments = [];
-              this.collectionSize = 0;
-              resolve();
-            }
-          });
+        .pipe(
+          finalize(() => {
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: (tournaments) => {
+            // Sort tournaments by creation date (newest first)
+            this.tournaments = (tournaments || []).sort((a, b) => 
+              new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+            );
+            this.collectionSize = this.tournaments.length;
+            // Force change detection to update the view
+            this.cdr.markForCheck();
+            resolve();
+          },
+          error: (error) => {
+            console.error('Error loading tournaments:', error);
+            this.tournaments = [];
+            this.collectionSize = 0;
+            this.cdr.markForCheck();
+            resolve();
+          }
+        });
     });
   }
 
-  viewTournament(tournamentId: string, event?: Event): void {
+  viewTournament(tournamentId: string | undefined, event?: Event): void {
+    if (!tournamentId) return;
+    
     if (event) {
       event.preventDefault();
       event.stopPropagation();
     }
-    this.router.navigate(['/tournaments', tournamentId], { replaceUrl: true });
+    
+    // Navigate to the tournament detail view using absolute path
+    this.router.navigate(['/tournaments/tournament', tournamentId]);
   }
 
   async createNewTournament(): Promise<void> {
+    await this.router.navigate(['tournaments', 'create'], { relativeTo: this.route.parent });
     this.currentView = 'create';
-    try {
-      // Load both players and teams in parallel
-      await Promise.all([
-        this.loadPlayers(),
-        this.loadTeams()
-      ]);
-      console.log('Players and teams loaded:', { players: this.players, teams: this.teams });
-    } catch (error) {
-      console.error('Error loading data:', error);
-    } finally {
-      // Force change detection to update the view
-      this.cdr.detectChanges();
-    }
+    await Promise.all([
+      this.loadPlayers(),
+      this.loadTeams()
+    ]);
   }
 
-  onBackToList(): void {
+  async onBackToList(): Promise<void> {
+    await this.router.navigate(['/tournaments']);
     this.currentView = 'list';
-    this.loadTournaments();
+    this.currentTournament = null;
+    this.tournamentForm.reset();
+    this.selectedPlayers = [];
+    this.playerSelections = [];
+    await this.loadTournaments();
+  }
+
+  async deleteTournament(tournamentId: string, event: Event): Promise<void> {
+    event.stopPropagation();
+    
+    const modalRef = this.modalService.open(ConfirmDialogComponent, {
+      centered: true,
+      backdrop: 'static'
+    });
+    
+    modalRef.componentInstance.title = 'Delete Tournament';
+    modalRef.componentInstance.message = 'Are you sure you want to delete this tournament? This action cannot be undone.';
+    modalRef.componentInstance.confirmText = 'Delete';
+    modalRef.componentInstance.confirmButtonClass = 'btn-danger';
+    
+    try {
+      const result = await modalRef.result;
+      if (result === 'confirm') {
+        this.isLoading = true;
+        await this.tournamentService.deleteTournament(tournamentId).toPromise();
+        
+        // Remove the deleted tournament from the list
+        this.tournaments = this.tournaments.filter(t => t.id !== tournamentId);
+        this.collectionSize = this.tournaments.length;
+      }
+    } catch (error) {
+      // Handle modal dismiss (user clicked cancel or backdrop)
+      console.log('Deletion cancelled');
+    } finally {
+      this.isLoading = false;
+    }
   }
 
   async loadPlayers(): Promise<void> {
@@ -561,6 +649,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
 
   async finalizeTournamentCreation(): Promise<void> {
     this.isLoading = true;
+    this.isSubmitting = true;
     try {
       const formValue = this.tournamentForm.value;
       const tournamentData = {
@@ -578,12 +667,28 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       };
 
       this.currentTournament = await this.tournamentService.createTournament(tournamentData).toPromise() || null;
-      this.currentView = 'tournament';
-      this.loadTournamentStats();
+      
+      // Wait for stats to load before navigating
+      await this.loadTournamentStats();
+      
+      // Reset form and state
+      this.tournamentForm.reset();
+      this.selectedPlayers = [];
+      this.playerSelections = [];
+      
+      // Update view after a small delay to ensure UI updates
+      setTimeout(() => {
+        this.currentView = 'tournament';
+        this.cdr.detectChanges();
+      }, 100);
+      
     } catch (error) {
-      alert('Failed to create tournament');
+      console.error('Error creating tournament:', error);
+      alert('Failed to create tournament. Please try again.');
     } finally {
       this.isLoading = false;
+      this.isSubmitting = false;
+      this.cdr.detectChanges();
     }
   }
 

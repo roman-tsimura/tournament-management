@@ -4,9 +4,8 @@
         <div class="tournament-list">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Tournaments</h2>
-                <button class="btn btn-primary" (click)="currentView = 'create'" [disabled]="isLoading">
-                    <i class="bi" [ngClass]="isLoading ? 'bi-arrow-repeat spin' : 'bi-plus-circle'"></i>
-                    {{ isLoading ? 'Loading...' : 'Create New Tournament' }}
+                <button class="btn btn-primary" (click)="createNewTournament()" [disabled]="isLoading">
+                    <i class="bi bi-plus-circle me-1"></i> Create New Tournament
                 </button>
             </div>
 
@@ -40,10 +39,14 @@
                                     <td>{{ tournament.name }}</td>
                                     <td>{{ tournament.games?.length || 0 }}</td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary me-2"
-                                                (click)="viewTournament(tournament.id)">
-                                            View
-                                        </button>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button (click)="viewTournament(tournament.id, $event)" class="btn btn-outline-primary">
+                                                View
+                                            </button>
+                                            <button (click)="deleteTournament(tournament.id, $event)" class="btn btn-outline-danger" [disabled]="isLoading">
+                                                <i class="bi bi-trash"></i> Delete
+                                            </button>
+                                        </div>
                                     </td>
                                 </tr>
                             }
@@ -70,9 +73,9 @@
     @if (currentView === 'create') {
         <div class="create-tournament">
             <div class="d-flex align-items-center mb-4">
-                <button class="btn btn-link p-0 me-3" (click)="currentView = 'list'">
+                <a routerLink="/tournaments" class="btn btn-link p-0 me-3">
                     <i class="bi bi-arrow-left"></i> Back to List
-                </button>
+                </a>
                 <h2 class="mb-0">Create New Tournament</h2>
             </div>
 
@@ -121,15 +124,12 @@
                 <div>
                     <h2 class="mb-0">{{ currentTournament.name }}</h2>
                     <div class="text-muted">
-                        <span>{{ games.length }} {{ games.length === 1 ? 'game' : 'games' }}</span>
+                        Created on {{ currentTournament.createdAt | date:'mediumDate' }}
                     </div>
                 </div>
-
-                <div class="d-flex gap-2">
-                    <button class="btn btn-outline-secondary" (click)="currentView = 'list'">
-                        <i class="bi bi-arrow-left me-1"></i> Back to List
-                    </button>
-                </div>
+                <a routerLink="/tournaments" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-left me-1"></i> Back to List
+                </a>
             </div>
 
             <!-- Add New Game Form -->
