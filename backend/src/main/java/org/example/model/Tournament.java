@@ -10,9 +10,6 @@ import java.util.List;
 @Entity
 @Table(name = "tournaments")
 public class Tournament {
-    public enum TournamentStatus {
-        UPCOMING, IN_PROGRESS, COMPLETED, CANCELLED
-    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,28 +17,6 @@ public class Tournament {
 
     @Column(nullable = false)
     private String name;
-
-    @Column(length = 1000)
-    private String description;
-
-    @Column(name = "start_date")
-    private LocalDateTime startDate;
-
-    @Column(name = "end_date")
-    private LocalDateTime endDate;
-
-    @Column(nullable = false)
-    @Enumerated(EnumType.STRING)
-    private TournamentStatus status = TournamentStatus.UPCOMING;
-
-    @Column(name = "max_players")
-    private Integer maxPlayers;
-
-    @Column(name = "current_round")
-    private Integer currentRound = 0;
-
-    @Column(name = "total_rounds")
-    private Integer totalRounds = 1;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -52,37 +27,58 @@ public class Tournament {
     @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Game> games = new ArrayList<>();
 
-    @ManyToMany
-    @JoinTable(
-            name = "tournament_players",
-            joinColumns = @JoinColumn(name = "tournament_id"),
-            inverseJoinColumns = @JoinColumn(name = "player_id")
-    )
-    private List<Player> players = new ArrayList<>();
+    @OneToMany(mappedBy = "tournament", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlayerTournament> playerStats = new ArrayList<>();
+    
+    @Transient
+    public Integer getPlayerPoints(Long playerId) {
+        return playerStats.stream()
+            .filter(ps -> ps.getPlayer().getId().equals(playerId))
+            .findFirst()
+            .map(PlayerTournament::getPoints)
+            .orElse(0);
+    }
+    
+    @Transient
+    public void updatePlayerPoints(Player player, int points) {
+        playerStats.stream()
+            .filter(ps -> ps.getPlayer().equals(player))
+            .findFirst()
+            .ifPresentOrElse(
+                ps -> ps.setPoints(points),
+                () -> {
+                    PlayerTournament pt = new PlayerTournament();
+                    pt.setPlayer(player);
+                    pt.setTournament(this);
+                    pt.setPoints(points);
+                    playerStats.add(pt);
+                }
+            );
+    }
 
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (startDate == null) {
-            startDate = LocalDateTime.now();
-        }
     }
 
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-        if (status == TournamentStatus.IN_PROGRESS && currentRound == null) {
-            currentRound = 1;
-        }
     }
 
     public void addPlayer(Player player) {
-        players.add(player);
+        if (playerStats.stream().noneMatch(ps -> ps.getPlayer().equals(player))) {
+            PlayerTournament pt = new PlayerTournament();
+            pt.setPlayer(player);
+            pt.setTournament(this);
+            pt.setPoints(0);
+            playerStats.add(pt);
+        }
     }
 
     public void removePlayer(Player player) {
-        players.remove(player);
+        playerStats.removeIf(ps -> ps.getPlayer().equals(player));
     }
 
     public void addGame(Game game) {

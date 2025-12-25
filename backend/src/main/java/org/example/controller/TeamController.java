@@ -1,10 +1,9 @@
 package org.example.controller;
 
+import jakarta.validation.Valid;
 import org.example.dto.CreateTeamRequest;
-import org.example.dto.PlayerDTO;
 import org.example.dto.TeamDTO;
 import org.example.mapper.TeamMapper;
-import org.example.model.Player;
 import org.example.model.Team;
 import org.example.service.TeamService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;

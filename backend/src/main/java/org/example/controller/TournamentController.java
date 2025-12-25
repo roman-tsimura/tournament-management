@@ -1,15 +1,18 @@
 package org.example.controller;
 
-import org.example.dto.TournamentDTO;
-import org.example.dto.TournamentStatsDTO;
+import jakarta.validation.Valid;
+import org.example.dto.*;
+import org.example.mapper.GameMapper;
 import org.example.mapper.TournamentMapper;
+import org.example.model.Game;
 import org.example.model.Tournament;
+import org.example.service.GameService;
 import org.example.service.TournamentService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -18,12 +21,19 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/tournaments")
 public class TournamentController {
     private final TournamentService tournamentService;
+    private final GameService gameService;
     private final TournamentMapper tournamentMapper;
+    private final GameMapper gameMapper;
 
     @Autowired
-    public TournamentController(TournamentService tournamentService, TournamentMapper tournamentMapper) {
+    public TournamentController(TournamentService tournamentService,
+                              GameService gameService,
+                              TournamentMapper tournamentMapper,
+                              GameMapper gameMapper) {
         this.tournamentService = tournamentService;
+        this.gameService = gameService;
         this.tournamentMapper = tournamentMapper;
+        this.gameMapper = gameMapper;
     }
 
     @GetMapping
@@ -39,6 +49,37 @@ public class TournamentController {
                 .map(tournamentMapper::toDTO)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+    
+    @PutMapping("/games/{gameId}/scores")
+    public ResponseEntity<GameDTO> updateGameScores(
+            @PathVariable Long gameId,
+            @Valid @RequestBody GameScoreUpdateDTO scoreUpdate) {
+        Game updatedGame = tournamentService.updateGameScores(gameId, scoreUpdate);
+        GameDTO gameDTO = gameMapper.toDTO(updatedGame);
+        return ResponseEntity.ok(gameDTO);
+    }
+    
+    @GetMapping("/{id}/games")
+    public ResponseEntity<List<GameDTO>> getTournamentGames(@PathVariable Long id) {
+        List<Game> games = tournamentService.getTournamentGames(id);
+        if (games.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<GameDTO> gameDTOs = games.stream()
+            .map(gameMapper::toDTO)
+            .collect(Collectors.toList());
+        return ResponseEntity.ok(gameDTOs);
+    }
+
+    @PostMapping("/{tournamentId}/games")
+    @ResponseStatus(HttpStatus.CREATED)
+    public GameDTO addGameToTournament(
+            @PathVariable Long tournamentId,
+            @Valid @RequestBody CreateGameRequest request) {
+        request.setTournamentId(tournamentId);
+        Game game = gameService.createGame(request);
+        return gameMapper.toDTO(game);
     }
 
     @PostMapping
@@ -72,30 +113,6 @@ public class TournamentController {
     public ResponseEntity<Void> deleteTournament(@PathVariable Long id) {
         tournamentService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{id}/start")
-    public ResponseEntity<TournamentDTO> startTournament(@PathVariable Long id) {
-        return tournamentService.startTournament(id)
-                .map(tournamentMapper::toDTO)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/{id}/complete")
-    public ResponseEntity<TournamentDTO> completeTournament(@PathVariable Long id) {
-        return tournamentService.completeTournament(id)
-                .map(tournamentMapper::toDTO)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @PostMapping("/{id}/next-round")
-    public ResponseEntity<TournamentDTO> startNextRound(@PathVariable Long id) {
-        return tournamentService.startNextRound(id)
-                .map(tournamentMapper::toDTO)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
     }
 
     @GetMapping("/{id}/stats")

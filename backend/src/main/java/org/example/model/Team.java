@@ -2,32 +2,38 @@ package org.example.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Data
 @Entity
-@Table(name = "teams")
-public class Team {
+@Table(name = "teams",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"name"}))
+public class Team implements java.io.Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @NotBlank(message = "Team name is required")
+    @Size(min = 2, max = 100, message = "Team name must be between 2 and 100 characters")
+    @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @CreationTimestamp
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
-
-    @OneToMany(mappedBy = "team1")
-    private List<Game> homeGames = new ArrayList<>();
-
-    @OneToMany(mappedBy = "team2")
-    private List<Game> awayGames = new ArrayList<>();
 
     @PrePersist
     protected void onCreate() {

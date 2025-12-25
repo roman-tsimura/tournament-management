@@ -13,8 +13,6 @@ public class GameDTO {
     private Integer score1;
     private Integer score2;
     private String status;
-    private Boolean isTeam1Home;
-    private LocalDateTime gameDate;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long tournamentId;

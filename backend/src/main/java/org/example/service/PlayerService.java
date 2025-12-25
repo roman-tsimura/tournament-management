@@ -1,11 +1,8 @@
 package org.example.service;
 
 import jakarta.transaction.Transactional;
-import org.example.exception.ResourceNotFoundException;
 import org.example.model.Player;
-import org.example.model.Tournament;
 import org.example.repository.PlayerRepository;
-import org.example.repository.TournamentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -15,12 +12,10 @@ import java.util.Optional;
 @Service
 public class PlayerService {
     private final PlayerRepository playerRepository;
-    private final TournamentRepository tournamentRepository;
 
     @Autowired
-    public PlayerService(PlayerRepository playerRepository, TournamentRepository tournamentRepository) {
+    public PlayerService(PlayerRepository playerRepository) {
         this.playerRepository = playerRepository;
-        this.tournamentRepository = tournamentRepository;
     }
 
     public List<Player> findAll() {
@@ -55,17 +50,5 @@ public class PlayerService {
 
     public List<Player> findPlayersByTournamentId(Long tournamentId) {
         return playerRepository.findByTournamentId(tournamentId);
-    }
-
-    @Transactional
-    public void registerForTournament(Long playerId, Long tournamentId) {
-        Player player = playerRepository.findById(playerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Player not found with id: " + playerId));
-
-        Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found with id: " + tournamentId));
-
-        player.addTournament(tournament);
-        playerRepository.save(player);
     }
 }
