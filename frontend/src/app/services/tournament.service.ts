@@ -1,8 +1,21 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
-import { Tournament, CreateTournamentRequest, UpdateGameScoreRequest, TournamentStats } from '../models/tournament.model';
+import { Observable, of } from 'rxjs';
+import { 
+  Tournament, 
+  CreateTournamentRequest, 
+  UpdateGameScoreRequest, 
+  TournamentStats, 
+  Game, 
+  AddGameRequest,
+  TournamentPlayer,
+  TournamentTeam,
+  PlayerSelection,
+  TeamSelection
+} from '../models/tournament.model';
 import { environment } from '../../environments/environment';
+import { Player } from '../models/player.model'; 
+import { Team } from '../models/team.model';
 
 @Injectable({
   providedIn: 'root'
@@ -20,8 +33,11 @@ export class TournamentService {
     return this.http.get<Tournament>(`${this.apiUrl}/${tournamentId}`);
   }
 
-  updateGameScore(tournamentId: string, gameData: UpdateGameScoreRequest): Observable<Tournament> {
-    return this.http.put<Tournament>(`${this.apiUrl}/${tournamentId}/games`, gameData);
+  updateGameScore(gameId: string, gameData: UpdateGameScoreRequest): Observable<Tournament> {
+    return this.http.put<Tournament>(`${this.apiUrl}/games/${gameId}/scores`, {
+      homeScore: gameData.homeScore,
+      guestScore: gameData.guestScore
+    });
   }
 
   getAllTournaments(): Observable<Tournament[]> {
@@ -32,7 +48,7 @@ export class TournamentService {
     teamAssignment: 'fixed' | 'random';
     homeAwayAssignment: 'fixed' | 'random';
   }): Observable<Tournament> {
-    return this.http.post<Tournament>(`${this.apiUrl}/${tournamentId}/rounds`, settings);
+    return this.http.post<Tournament>(`${this.apiUrl}/${tournamentId}/next-round`, settings);
   }
 
   completeTournament(tournamentId: string): Observable<Tournament> {
@@ -43,14 +59,47 @@ export class TournamentService {
     return this.http.get<TournamentStats>(`${this.apiUrl}/${tournamentId}/stats`);
   }
 
-  // Helper method to calculate points based on game result
-  calculatePoints(homeScore: number, awayScore: number): { homePoints: number; awayPoints: number } {
-    if (homeScore > awayScore) {
-      return { homePoints: 3, awayPoints: 0 };
-    } else if (homeScore < awayScore) {
-      return { homePoints: 0, awayPoints: 3 };
-    } else {
-      return { homePoints: 1, awayPoints: 1 };
-    }
+  // Game management
+  addGame(tournamentId: string, gameData: AddGameRequest): Observable<Game> {
+    // Map the frontend's AddGameRequest to the backend's expected format
+    const backendRequest = {
+      player1Id: gameData.homePlayerId,
+      player2Id: gameData.guestPlayerId,
+      team1Id: gameData.homeTeamId,
+      team2Id: gameData.guestTeamId,
+      tournamentId: tournamentId,
+      isTeam1Home: true // Assuming home team is team1
+    };
+    return this.http.post<Game>(`${this.apiUrl}/${tournamentId}/games`, backendRequest);
+  }
+
+  updateGame(tournamentId: string, gameId: string, gameData: Partial<Game>): Observable<Game> {
+    return this.http.put<Game>(`${this.apiUrl}/${tournamentId}/games/${gameId}`, gameData);
+  }
+
+  deleteGame(tournamentId: string, gameId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${tournamentId}/games/${gameId}`);
+  }
+
+  // Player and team management
+  getAvailablePlayers(tournamentId: string): Observable<PlayerSelection[]> {
+    return this.http.get<PlayerSelection[]>(`${this.apiUrl}/${tournamentId}/available-players`);
+  }
+
+  getAvailableTeams(tournamentId: string): Observable<TeamSelection[]> {
+    return this.http.get<TeamSelection[]>(`${this.apiUrl}/${tournamentId}/available-teams`);
+  }
+
+  // Helper methods for random selection
+  getRandomPlayer(players: PlayerSelection[]): PlayerSelection | null {
+    if (!players.length) return null;
+    const randomIndex = Math.floor(Math.random() * players.length);
+    return players[randomIndex];
+  }
+
+  getRandomTeam(teams: TeamSelection[]): TeamSelection | null {
+    if (!teams.length) return null;
+    const randomIndex = Math.floor(Math.random() * teams.length);
+    return teams[randomIndex];
   }
 }

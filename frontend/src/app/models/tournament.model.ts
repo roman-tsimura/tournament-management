@@ -1,18 +1,17 @@
+export interface TournamentSettings {
+  teamAssignment: 'manual' | 'random' | 'by_teams';
+  homeAwayAssignment: 'manual' | 'random' | 'alternating';
+}
+
 export interface Tournament {
   id: string;
   name: string;
-  status: 'pending' | 'in_progress' | 'completed';
-  rounds: TournamentRound[];
-  participants: TournamentParticipant[];
+  games: Game[];
+  players: TournamentPlayer[];
+  teams: TournamentTeam[];
+  settings: TournamentSettings;
   createdAt: Date;
   updatedAt: Date;
-  settings: TournamentSettings;
-}
-
-export interface TournamentRound {
-  roundNumber: number;
-  games: Game[];
-  isCompleted: boolean;
 }
 
 export interface Game {
@@ -22,6 +21,8 @@ export interface Game {
   homeScore: number | null;
   guestScore: number | null;
   isCompleted: boolean;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface GamePlayer {
@@ -32,39 +33,35 @@ export interface GamePlayer {
   isHome: boolean;
 }
 
-export interface TournamentParticipant {
-  playerId: string;
-  playerName: string;
+export interface TournamentPlayer {
+  id: string;
+  name: string;
   totalPoints: number;
-  goalsScored: number;
-  goalsConceded: number;
   gamesPlayed: number;
   wins: number;
   draws: number;
   losses: number;
-  teamAssignments: TeamAssignment[];
+  goalsScored: number;
+  goalsConceded: number;
 }
 
-export interface TeamAssignment {
-  roundNumber: number;
-  teamId: string;
-  teamName: string;
-  isHome: boolean;
-}
-
-export interface TournamentSettings {
-  teamAssignment: 'fixed' | 'random';
-  homeAwayAssignment: 'fixed' | 'random';
-  roundsToPlay: number;
-  pointsForWin: number;
-  pointsForDraw: number;
-  pointsForLoss: number;
+export interface TournamentTeam {
+  id: string;
+  name: string;
+  players: string[]; // Player IDs
 }
 
 export interface CreateTournamentRequest {
   name: string;
   playerIds: string[];
-  settings: TournamentSettings;
+}
+
+export interface AddGameRequest {
+  tournamentId: string;
+  homePlayerId: string;
+  homeTeamId: string;
+  guestPlayerId: string;
+  guestTeamId: string;
 }
 
 export interface UpdateGameScoreRequest {
@@ -76,7 +73,23 @@ export interface UpdateGameScoreRequest {
 export interface TournamentStats {
   totalGames: number;
   completedGames: number;
-  currentRound: number;
-  isTournamentComplete: boolean;
-  leaderboard: TournamentParticipant[];
+  leaderboard: TournamentPlayer[];
+}
+
+// For form models
+export interface GameFormModel {
+  homePlayerId: string;
+  homeTeamId: string;
+  guestPlayerId: string;
+  guestTeamId: string;
+}
+
+export interface PlayerSelection {
+  id: string;
+  name: string;
+}
+
+export interface TeamSelection {
+  id: string;
+  name: string;
 }
