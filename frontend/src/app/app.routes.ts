@@ -7,7 +7,14 @@ export const routes: Routes = [
   { 
     path: 'tournaments', 
     component: TournamentsComponent,
-    title: 'Tournaments'
+    title: 'Tournaments',
+    children: [
+      { 
+        path: ':id', 
+        component: TournamentsComponent,
+        title: 'Tournament Details'
+      }
+    ]
   },
   { 
     path: 'players', 
