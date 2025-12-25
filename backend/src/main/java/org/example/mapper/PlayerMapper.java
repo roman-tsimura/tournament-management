@@ -12,9 +12,7 @@ public interface PlayerMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "gamesAsPlayer1", ignore = true)
-    @Mapping(target = "gamesAsPlayer2", ignore = true)
-    @Mapping(target = "tournaments", ignore = true)
+    @Mapping(target = "tournamentStats", ignore = true)
     Player toEntity(PlayerDTO playerDTO);
 
     PlayerDTO toDTO(Player player);
@@ -22,16 +20,12 @@ public interface PlayerMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "gamesAsPlayer1", ignore = true)
-    @Mapping(target = "gamesAsPlayer2", ignore = true)
-    @Mapping(target = "tournaments", ignore = true)
+    @Mapping(target = "tournamentStats", ignore = true)
     Player toEntity(CreatePlayerRequest createPlayerRequest);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "gamesAsPlayer1", ignore = true)
-    @Mapping(target = "gamesAsPlayer2", ignore = true)
-    @Mapping(target = "tournaments", ignore = true)
+    @Mapping(target = "tournamentStats", ignore = true)
     void updateFromDto(CreatePlayerRequest dto, @MappingTarget Player entity);
 }

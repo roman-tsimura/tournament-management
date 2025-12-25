@@ -1,5 +1,6 @@
 package org.example.controller;
 
+import jakarta.validation.Valid;
 import org.example.dto.CreatePlayerRequest;
 import org.example.dto.PlayerDTO;
 import org.example.mapper.PlayerMapper;
@@ -10,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
-import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -70,14 +70,5 @@ public class PlayerController {
     public ResponseEntity<Void> deletePlayer(@PathVariable Long id) {
         playerService.delete(id);
         return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{playerId}/tournaments/{tournamentId}")
-    public ResponseEntity<Void> registerForTournament(
-            @PathVariable Long playerId,
-            @PathVariable Long tournamentId) {
-
-        playerService.registerForTournament(playerId, tournamentId);
-        return ResponseEntity.ok().build();
     }
 }

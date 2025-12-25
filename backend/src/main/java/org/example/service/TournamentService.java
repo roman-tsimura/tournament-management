@@ -1,40 +1,32 @@
 package org.example.service;
 
+import jakarta.persistence.EntityNotFoundException;
 import jakarta.transaction.Transactional;
+import jakarta.validation.Valid;
+import org.example.dto.GameScoreUpdateDTO;
 import org.example.dto.TournamentStatsDTO;
 import org.example.model.Game;
 import org.example.model.Player;
-import org.example.model.Team;
+import org.example.model.PlayerTournament;
 import org.example.model.Tournament;
-import org.example.model.Tournament.TournamentStatus;
 import org.example.repository.GameRepository;
-import org.example.repository.PlayerRepository;
-import org.example.repository.TeamRepository;
 import org.example.repository.TournamentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.*;
-import java.util.stream.Collectors;
 
 @Service
 public class TournamentService {
     private final TournamentRepository tournamentRepository;
-    private final PlayerRepository playerRepository;
-    private final TeamRepository teamRepository;
     private final GameRepository gameRepository;
     private final GameService gameService;
 
     @Autowired
     public TournamentService(TournamentRepository tournamentRepository,
-                             PlayerRepository playerRepository,
-                             TeamRepository teamRepository,
                              GameService gameService,
                              GameRepository gameRepository) {
         this.tournamentRepository = tournamentRepository;
-        this.playerRepository = playerRepository;
-        this.teamRepository = teamRepository;
         this.gameService = gameService;
         this.gameRepository = gameRepository;
     }
@@ -43,15 +35,18 @@ public class TournamentService {
         return tournamentRepository.findAll();
     }
 
+    public List<Game> getTournamentGames(Long tournamentId) {
+        return tournamentRepository.findById(tournamentId)
+                .map(gameRepository::findByTournament)
+                .orElse(Collections.emptyList());
+    }
+
     public Optional<Tournament> findById(Long id) {
         return tournamentRepository.findById(id);
     }
 
     @Transactional
     public Tournament save(Tournament tournament) {
-        if (tournament.getStatus() == null) {
-            tournament.setStatus(TournamentStatus.UPCOMING);
-        }
         return tournamentRepository.save(tournament);
     }
 
@@ -64,13 +59,6 @@ public class TournamentService {
     public Tournament update(Long id, Tournament tournamentDetails) {
         return tournamentRepository.findById(id).map(tournament -> {
             tournament.setName(tournamentDetails.getName());
-            tournament.setDescription(tournamentDetails.getDescription());
-            tournament.setStartDate(tournamentDetails.getStartDate());
-            tournament.setEndDate(tournamentDetails.getEndDate());
-            tournament.setStatus(tournamentDetails.getStatus());
-            tournament.setMaxPlayers(tournamentDetails.getMaxPlayers());
-            tournament.setCurrentRound(tournamentDetails.getCurrentRound());
-            tournament.setTotalRounds(tournamentDetails.getTotalRounds());
             return tournamentRepository.save(tournament);
         }).orElseThrow(() -> new IllegalStateException("Tournament not found with id " + id));
     }
@@ -79,60 +67,43 @@ public class TournamentService {
         return tournamentRepository.existsById(id);
     }
 
-
     @Transactional
-    public Optional<Tournament> startTournament(Long id) {
-        return tournamentRepository.findById(id).map(tournament -> {
-            if (tournament.getStatus() != TournamentStatus.UPCOMING) {
-                throw new IllegalStateException("Tournament is not in UPCOMING status");
-            }
+    public Game updateGameScores(Long gameId, @Valid GameScoreUpdateDTO scoreUpdate) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new EntityNotFoundException("Game not found with id: " + gameId));
 
-            // Additional logic to start the tournament (e.g., create initial matches)
-            tournament.setStatus(TournamentStatus.IN_PROGRESS);
-            tournament.setCurrentRound(1);
-            tournament.setStartDate(LocalDateTime.now());
+        gameService.updateGameScore(gameId, scoreUpdate.getScore1(), scoreUpdate.getScore2());
 
-            return tournamentRepository.save(tournament);
-        });
+        if (game.getStatus() == Game.GameStatus.COMPLETED) {
+            updatePlayerPoints(game);
+        }
+
+        return gameRepository.save(game);
     }
 
-    @Transactional
-    public Optional<Tournament> completeTournament(Long id) {
-        return tournamentRepository.findById(id).map(tournament -> {
-            tournament.setStatus(TournamentStatus.COMPLETED);
-            tournament.setEndDate(LocalDateTime.now());
-            return tournamentRepository.save(tournament);
-        });
+    private void updatePlayerPoints(Game game) {
+        if (game == null || game.getTournament() == null) {
+            throw new IllegalArgumentException("Game or tournament cannot be null");
+        }
+        Tournament tournament = game.getTournament();
+        if (game.isDraw()) {
+            handleDraw(tournament, game.getPlayer1(), game.getPlayer2());
+        } else {
+            handleWin(tournament, game.getWinner());
+        }
+        tournamentRepository.save(tournament);
     }
 
-    @Transactional
-    public Optional<Tournament> startNextRound(Long id) {
-        return tournamentRepository.findById(id).map(tournament -> {
-            if (tournament.getStatus() != TournamentStatus.IN_PROGRESS) {
-                throw new IllegalStateException("Tournament is not in progress");
-            }
+    private void handleDraw(Tournament tournament, Player player1, Player player2) {
+        int player1Points = tournament.getPlayerPoints(player1.getId()) + 1;
+        int player2Points = tournament.getPlayerPoints(player2.getId()) + 1;
 
-            if (tournament.getCurrentRound() >= tournament.getTotalRounds()) {
-                throw new IllegalStateException("Tournament has reached the maximum number of rounds");
-            }
-
-            tournament.setCurrentRound(tournament.getCurrentRound() + 1);
-            
-            // Additional logic to create matches for the next round
-            
-            return tournamentRepository.save(tournament);
-        });
+        tournament.updatePlayerPoints(player1, player1Points);
+        tournament.updatePlayerPoints(player2, player2Points);
     }
 
-    @Transactional
-    public Game createGameForTournament(Long tournamentId, Game game,
-                                        Long player1Id, Long player2Id,
-                                        Long team1Id, Long team2Id) {
-        return gameService.createGame(game, player1Id, player2Id, team1Id, team2Id, tournamentId);
-    }
-
-    public List<Player> getTournamentPlayers(Long tournamentId) {
-        return playerRepository.findByTournamentId(tournamentId);
+    private void handleWin(Tournament tournament, Player winner) {
+        tournament.updatePlayerPoints(winner, tournament.getPlayerPoints(winner.getId()) + 3);
     }
 
     @Transactional
@@ -141,89 +112,86 @@ public class TournamentService {
             TournamentStatsDTO stats = new TournamentStatsDTO();
             stats.setTournamentId(tournamentId);
 
+            // Get all games for the tournament
             List<Game> games = gameRepository.findByTournament(tournament);
-            List<Team> teams = teamRepository.findByTournament(tournament);
+            stats.setTotalGames(games.size());
 
-            // Calculate basic stats
-            int totalGames = games.size();
-            int completedGames = (int) games.stream()
-                    .filter(g -> g.getStatus() == Game.GameStatus.COMPLETED)
+            // Count completed games
+            long completedGames = games.stream()
+                    .filter(game -> game.getStatus() == Game.GameStatus.COMPLETED)
                     .count();
+            stats.setCompletedGames((int) completedGames);
 
-            stats.setTotalGames(totalGames);
-            stats.setCompletedGames(completedGames);
+            // Get all player statistics for the tournament
+            List<PlayerTournament> playerTournaments = tournament.getPlayerStats();
 
-            // Calculate team stats
-            Map<Long, TournamentStatsDTO.TeamStats> teamStatsMap = new HashMap<>();
+            // Calculate player statistics
+            Map<Long, TournamentStatsDTO.PlayerStats> playerStatsMap = new HashMap<>();
 
-            // Initialize team stats
-            for (Team team : teams) {
-                TournamentStatsDTO.TeamStats teamStats = new TournamentStatsDTO.TeamStats();
-                teamStats.setTeamName(team.getName());
-                teamStatsMap.put(team.getId(), teamStats);
-            }
-
-            // Process games to calculate team statistics
+            // Process completed games for player stats
             for (Game game : games) {
-                if (game.getStatus() == Game.GameStatus.COMPLETED &&
-                        game.getTeam1() != null && game.getTeam2() != null) {
-
-                    TournamentStatsDTO.TeamStats homeStats = teamStatsMap.get(game.getTeam1().getId());
-                    TournamentStatsDTO.TeamStats awayStats = teamStatsMap.get(game.getTeam2().getId());
-
-                    if (homeStats != null && awayStats != null) {
-                        // Update games played
-                        homeStats.setGamesPlayed(homeStats.getGamesPlayed() + 1);
-                        awayStats.setGamesPlayed(awayStats.getGamesPlayed() + 1);
-
-                        // Update goals
-                        homeStats.setGoalsFor(homeStats.getGoalsFor() + (game.getScore1() != null ? game.getScore1() : 0));
-                        homeStats.setGoalsAgainst(homeStats.getGoalsAgainst() + (game.getScore2() != null ? game.getScore2() : 0));
-
-                        awayStats.setGoalsFor(awayStats.getGoalsFor() + (game.getScore2() != null ? game.getScore2() : 0));
-                        awayStats.setGoalsAgainst(awayStats.getGoalsAgainst() + (game.getScore1() != null ? game.getScore1() : 0));
-
-                        // Update wins, draws, losses
-                        if (game.getScore1() > game.getScore2()) {
-                            homeStats.setWins(homeStats.getWins() + 1);
-                            awayStats.setLosses(awayStats.getLosses() + 1);
-                            homeStats.setPoints(homeStats.getPoints() + 3);
-                        } else if (game.getScore1() < game.getScore2()) {
-                            homeStats.setLosses(homeStats.getLosses() + 1);
-                            awayStats.setWins(awayStats.getWins() + 1);
-                            awayStats.setPoints(awayStats.getPoints() + 3);
-                        } else {
-                            homeStats.setDraws(homeStats.getDraws() + 1);
-                            awayStats.setDraws(awayStats.getDraws() + 1);
-                            homeStats.setPoints(homeStats.getPoints() + 1);
-                            awayStats.setPoints(awayStats.getPoints() + 1);
-                        }
+                if (game.getStatus() == Game.GameStatus.COMPLETED) {
+                    // Update player stats
+                    if (game.getPlayer1() != null) {
+                        updatePlayerStats(playerStatsMap, game.getPlayer1(),
+                                game.getScore1(), game.getScore2());
+                    }
+                    if (game.getPlayer2() != null) {
+                        updatePlayerStats(playerStatsMap, game.getPlayer2(),
+                                game.getScore2(), game.getScore1());
                     }
                 }
             }
 
-            stats.setTeamStats(teamStatsMap);
+            // Set player points from PlayerTournament relationship
+            for (PlayerTournament pt : playerTournaments) {
+                if (pt.getPlayer() != null) {
+                    TournamentStatsDTO.PlayerStats playerStats = playerStatsMap.computeIfAbsent(
+                            pt.getPlayer().getId(),
+                            k -> new TournamentStatsDTO.PlayerStats()
+                    );
+                    playerStats.setPlayerId(pt.getPlayer().getId());
+                    playerStats.setPlayerName(pt.getPlayer().getName());
+                    playerStats.setPoints(pt.getPoints());
+                }
+            }
 
-            // Get recent games (last 5 completed games)
-            List<TournamentStatsDTO.GameStats> recentGames = games.stream()
-                    .filter(g -> g.getStatus() == Game.GameStatus.COMPLETED)
-                    .sorted(Comparator.comparing(Game::getGameDate, Comparator.nullsLast(Comparator.reverseOrder())))
-                    .limit(5)
-                    .map(game -> {
-                        TournamentStatsDTO.GameStats gameStats = new TournamentStatsDTO.GameStats();
-                        gameStats.setGameId(game.getId());
-                        if (game.getTeam1() != null) gameStats.setHomeTeamName(game.getTeam1().getName());
-                        if (game.getTeam2() != null) gameStats.setAwayTeamName(game.getTeam2().getName());
-                        gameStats.setHomeScore(game.getScore1());
-                        gameStats.setAwayScore(game.getScore2());
-                        gameStats.setStatus(game.getStatus().toString());
-                        return gameStats;
-                    })
-                    .collect(Collectors.toList());
-
-            stats.setRecentGames(recentGames);
+            stats.setPlayerStats(new ArrayList<>(playerStatsMap.values()));
 
             return stats;
         });
+    }
+
+    private void updatePlayerStats(
+            Map<Long, TournamentStatsDTO.PlayerStats> playerStatsMap,
+            Player player,
+            int goalsFor,
+            int goalsAgainst
+    ) {
+        if (player == null) return;
+
+        TournamentStatsDTO.PlayerStats playerStats = playerStatsMap.computeIfAbsent(
+                player.getId(),
+                k -> {
+                    TournamentStatsDTO.PlayerStats ps = new TournamentStatsDTO.PlayerStats();
+                    ps.setPlayerId(player.getId());
+                    ps.setPlayerName(player.getName());
+                    return ps;
+                }
+        );
+
+        // Update player statistics
+        playerStats.setGamesPlayed(playerStats.getGamesPlayed() + 1);
+        playerStats.setGoalsFor(playerStats.getGoalsFor() + goalsFor);
+        playerStats.setGoalsAgainst(playerStats.getGoalsAgainst() + goalsAgainst);
+
+        if (goalsFor > goalsAgainst) {
+            playerStats.setWins(playerStats.getWins() + 1);
+        } else if (goalsFor == goalsAgainst) {
+            playerStats.setDraws(playerStats.getDraws() + 1);
+        } else {
+            playerStats.setLosses(playerStats.getLosses() + 1);
+        }
+
     }
 }

@@ -2,6 +2,13 @@ package org.example.model;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -12,28 +19,37 @@ import java.util.List;
 @Data
 @Entity
 @Table(name = "players")
-public class Player {
+public class Player implements java.io.Serializable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     
-    @Column(nullable = false)
+    @NotBlank(message = "Name is required")
+    @Size(min = 2, max = 100, message = "Name must be between 2 and 100 characters")
+    @Column(nullable = false, length = 100)
     private String name;
     
-    @Column(name = "created_at", updatable = false)
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @CreationTimestamp
     private LocalDateTime createdAt;
     
     @Column(name = "updated_at")
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    @OneToMany(mappedBy = "player", cascade = {CascadeType.PERSIST, CascadeType.MERGE, CascadeType.REFRESH}, orphanRemoval = true)
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<PlayerTournament> tournamentStats = new ArrayList<>();
     
-    @OneToMany(mappedBy = "player1", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Game> gamesAsPlayer1 = new ArrayList<>();
-    
-    @OneToMany(mappedBy = "player2", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Game> gamesAsPlayer2 = new ArrayList<>();
-    
-    @ManyToMany(mappedBy = "players")
-    private List<Tournament> tournaments = new ArrayList<>();
+    @Transient
+    public Integer getPointsForTournament(Long tournamentId) {
+        return tournamentStats.stream()
+            .filter(pt -> pt.getTournament().getId().equals(tournamentId))
+            .findFirst()
+            .map(PlayerTournament::getPoints)
+            .orElse(0);
+    }
     
     @PrePersist
     protected void onCreate() {
@@ -45,37 +61,5 @@ public class Player {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-    
-    /**
-     * Adds this player to a tournament.
-     * @param tournament The tournament to add the player to
-     */
-    public void addTournament(Tournament tournament) {
-        if (!tournaments.contains(tournament)) {
-            tournaments.add(tournament);
-            tournament.getPlayers().add(this);
-        }
-    }
-    
-    /**
-     * Removes this player from a tournament.
-     * @param tournament The tournament to remove the player from
-     */
-    public void removeTournament(Tournament tournament) {
-        if (tournaments.remove(tournament)) {
-            tournament.getPlayers().remove(this);
-        }
-    }
-    
-    /**
-     * Gets all games where this player participated.
-     * @return List of all games for this player
-     */
-    @Transient
-    public List<Game> getAllGames() {
-        List<Game> allGames = new ArrayList<>();
-        allGames.addAll(gamesAsPlayer1);
-        allGames.addAll(gamesAsPlayer2);
-        return allGames;
-    }
+
 }

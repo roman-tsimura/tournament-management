@@ -12,8 +12,6 @@ public interface TeamMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "homeGames", ignore = true)
-    @Mapping(target = "awayGames", ignore = true)
     Team toEntity(TeamDTO teamDTO);
 
     TeamDTO toDTO(Team team);
@@ -21,14 +19,10 @@ public interface TeamMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "homeGames", ignore = true)
-    @Mapping(target = "awayGames", ignore = true)
     Team toEntity(CreateTeamRequest createTeamRequest);
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "homeGames", ignore = true)
-    @Mapping(target = "awayGames", ignore = true)
     void updateFromDto(CreateTeamRequest dto, @MappingTarget Team entity);
 }

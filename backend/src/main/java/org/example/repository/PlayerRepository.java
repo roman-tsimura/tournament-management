@@ -13,6 +13,6 @@ import java.util.Optional;
 public interface PlayerRepository extends JpaRepository<Player, Long> {
     Optional<Player> findByName(String name);
 
-    @Query("SELECT p FROM Player p JOIN p.tournaments t WHERE t.id = :tournamentId")
+    @Query("SELECT p FROM Player p JOIN p.tournamentStats t WHERE t.tournament.id = :tournamentId")
     List<Player> findByTournamentId(@Param("tournamentId") Long tournamentId);
 }

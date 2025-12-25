@@ -21,6 +21,7 @@ public interface GameMapper {
     @Mapping(target = "tournament", source = "tournamentId", qualifiedByName = "mapTournamentIdToTournament")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
+    @Mapping(target = "status", expression = "java(gameDTO.getStatus() != null ? Game.GameStatus.valueOf(gameDTO.getStatus()) : Game.GameStatus.SCHEDULED)")
     Game toEntity(GameDTO gameDTO);
 
     @Mapping(target = "player1Id", source = "player1.id")
@@ -28,6 +29,7 @@ public interface GameMapper {
     @Mapping(target = "team1Id", source = "team1.id")
     @Mapping(target = "team2Id", source = "team2.id")
     @Mapping(target = "tournamentId", source = "tournament.id")
+    @Mapping(target = "status", source = "status", defaultExpression = "java(org.example.model.Game.GameStatus.SCHEDULED.toString())")
     GameDTO toDTO(Game game);
     
     @Mapping(target = "id", ignore = true)
