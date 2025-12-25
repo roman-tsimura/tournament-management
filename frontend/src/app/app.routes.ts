@@ -7,12 +7,30 @@ export const routes: Routes = [
   { 
     path: 'tournaments', 
     component: TournamentsComponent,
-    title: 'Tournaments',
     children: [
       { 
-        path: ':id', 
+        path: '', 
         component: TournamentsComponent,
+        data: { view: 'list' },
+        title: 'Tournaments'
+      },
+      { 
+        path: 'create', 
+        component: TournamentsComponent,
+        data: { view: 'create' },
+        title: 'Create Tournament'
+      },
+      { 
+        path: 'tournament/:id', 
+        component: TournamentsComponent,
+        data: { view: 'tournament' },
         title: 'Tournament Details'
+      },
+      {
+        path: '',
+        component: TournamentsComponent,
+        data: { view: 'list' },
+        title: 'Tournaments'
       }
     ]
   },

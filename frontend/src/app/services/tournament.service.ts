@@ -44,6 +44,10 @@ export class TournamentService {
     return this.http.get<Tournament[]>(this.apiUrl);
   }
 
+  deleteTournament(tournamentId: string): Observable<void> {
+    return this.http.delete<void>(`${this.apiUrl}/${tournamentId}`);
+  }
+
   startNextRound(tournamentId: string, settings?: {
     teamAssignment: 'fixed' | 'random';
     homeAwayAssignment: 'fixed' | 'random';
