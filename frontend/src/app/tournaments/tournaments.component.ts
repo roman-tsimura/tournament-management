@@ -130,7 +130,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       homePlayerId: ['', Validators.required],
       homeTeamId: ['', Validators.required],
       guestPlayerId: ['', [Validators.required, this.differentPlayerValidator('homePlayerId')]],
-      guestTeamId: ['', Validators.required]
+      guestTeamId: ['', [Validators.required, this.differentTeamValidator('homeTeamId')]]
     });
     
     // Update available teams when player selection changes
@@ -158,6 +158,19 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       const otherValue = control.parent.get(otherField)?.value;
       return otherValue && control.value === otherValue 
         ? { samePlayer: true } 
+        : null;
+    };
+  }
+
+  // Custom validator to ensure home and guest teams are different
+  private differentTeamValidator(otherField: string) {
+    return (control: FormControl) => {
+      if (!control.parent) {
+        return null;
+      }
+      const otherValue = control.parent.get(otherField)?.value;
+      return otherValue && control.value === otherValue 
+        ? { sameTeam: true } 
         : null;
     };
   }
@@ -338,7 +351,21 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
   
   onRandomizePlayer(playerType: 'home' | 'guest'): void {
-    const randomPlayer = this.tournamentService.getRandomPlayer(this.availablePlayers);
+    // Get the other player's ID (if any)
+    const otherPlayerControl = playerType === 'home' ? 'guestPlayerId' : 'homePlayerId';
+    const otherPlayerId = this.gameForm.get(otherPlayerControl)?.value;
+    
+    // Filter out the other selected player (if any) from available players
+    const availablePlayers = this.availablePlayers.filter(
+      player => !otherPlayerId || player.id !== otherPlayerId
+    );
+    
+    if (availablePlayers.length === 0) {
+      console.warn('No available players to select');
+      return;
+    }
+    
+    const randomPlayer = this.tournamentService.getRandomPlayer(availablePlayers);
     if (randomPlayer) {
       const controlName = `${playerType}PlayerId`;
       this.gameForm.get(controlName)?.setValue(randomPlayer.id);
@@ -347,8 +374,26 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
   
   onRandomizeTeam(playerType: 'home' | 'guest'): void {
-    const teams = playerType === 'home' ? this.filteredHomeTeams : this.filteredGuestTeams;
-    const randomTeam = this.tournamentService.getRandomTeam(teams);
+    // Get the other team's ID (if any)
+    const otherTeamControl = playerType === 'home' ? 'guestTeamId' : 'homeTeamId';
+    const otherTeamId = this.gameForm.get(otherTeamControl)?.value;
+    
+    // Get the appropriate teams list based on player type
+    let availableTeams = playerType === 'home' ? 
+      [...this.filteredHomeTeams] : 
+      [...this.filteredGuestTeams];
+    
+    // Filter out the other selected team (if any)
+    availableTeams = availableTeams.filter(
+      team => !otherTeamId || team.id !== otherTeamId
+    );
+    
+    if (availableTeams.length === 0) {
+      console.warn(`No available teams to select for ${playerType} team`);
+      return;
+    }
+    
+    const randomTeam = this.tournamentService.getRandomTeam(availableTeams);
     if (randomTeam) {
       const controlName = `${playerType}TeamId`;
       this.gameForm.get(controlName)?.setValue(randomTeam.id);
@@ -370,6 +415,18 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       return;
     }
 
+    // Get player and team names
+    const homePlayer = this.availablePlayers.find(p => p.id === formValue.homePlayerId);
+    const guestPlayer = this.availablePlayers.find(p => p.id === formValue.guestPlayerId);
+    const homeTeam = this.availableTeams.find(t => t.id === formValue.homeTeamId);
+    const guestTeam = this.availableTeams.find(t => t.id === formValue.guestTeamId);
+
+    if (!homePlayer || !guestPlayer || !homeTeam || !guestTeam) {
+      alert('Invalid player or team selection');
+      this.isSubmitting = false;
+      return;
+    }
+
     const gameData: AddGameRequest = {
       tournamentId: this.tournamentId,
       homePlayerId: formValue.homePlayerId,
@@ -384,16 +441,39 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         )
         .subscribe({
           next: (game) => {
-            this.games.unshift({ ...game, isExpanded: false });
+            // Create a new game object with all necessary properties
+            const newGame: GameWithSelection = {
+              ...game,
+              isExpanded: false,
+              homePlayer: {
+                playerId: game.homePlayer?.playerId || formValue.homePlayerId,
+                playerName: homePlayer?.name || '',
+                teamId: game.homePlayer?.teamId || formValue.homeTeamId,
+                teamName: homeTeam?.name || '',
+                isHome: true
+              },
+              guestPlayer: {
+                playerId: game.guestPlayer?.playerId || formValue.guestPlayerId,
+                playerName: guestPlayer?.name || '',
+                teamId: game.guestPlayer?.teamId || formValue.guestTeamId,
+                teamName: guestTeam?.name || '',
+                isHome: false
+              }
+            };
+            
+            // Add the new game to the beginning of the games array
+            this.games.unshift(newGame);
+            
+            // Reset the form and filtered teams
             this.gameForm.reset();
-            // Reset filtered teams to all available teams
             this.filteredHomeTeams = [...this.availableTeams];
             this.filteredGuestTeams = [...this.availableTeams];
-            // In a real app, show a success message
+            
+            // Force change detection
+            this.cdr.detectChanges();
           },
           error: (error) => {
             console.error('Error adding game:', error);
-            // In a real app, show a user-friendly error message
             alert('Failed to add game: ' + (error.error?.message || error.message || 'Unknown error'));
           }
         });

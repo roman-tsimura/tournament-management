@@ -170,11 +170,17 @@
                                             <label class="form-label">Team</label>
                                             <div class="input-group">
                                                 <select class="form-select" formControlName="homeTeamId"
-                                                        [ngClass]="{'is-invalid': gameForm.get('homeTeamId')?.invalid && gameForm.get('homeTeamId')?.touched}"
+                                                        [ngClass]="{'is-invalid': (gameForm.get('homeTeamId')?.invalid && gameForm.get('homeTeamId')?.touched) || gameForm.get('homeTeamId')?.errors?.['sameTeam']}"
                                                         [disabled]="!gameForm.get('homePlayerId')?.value">
                                                     <option value="">Select team</option>
                                                     @for (team of filteredHomeTeams; track team.id) {
-                                                        <option [value]="team.id">{{ team.name }}</option>
+                                                        <option [value]="team.id"
+                                                                [disabled]="team.id === gameForm.get('guestTeamId')?.value">
+                                                            {{ team.name }}
+                                                            @if (team.id === gameForm.get('guestTeamId')?.value) {
+                                                                (selected for away)
+                                                            }
+                                                        </option>
                                                     }
                                                 </select>
                                                 <button class="btn btn-outline-secondary" type="button"
@@ -228,11 +234,17 @@
                                             <label class="form-label">Team</label>
                                             <div class="input-group">
                                                 <select class="form-select" formControlName="guestTeamId"
-                                                        [ngClass]="{'is-invalid': gameForm.get('guestTeamId')?.invalid && gameForm.get('guestTeamId')?.touched}"
+                                                        [ngClass]="{'is-invalid': (gameForm.get('guestTeamId')?.invalid && gameForm.get('guestTeamId')?.touched) || gameForm.get('guestTeamId')?.errors?.['sameTeam']}"
                                                         [disabled]="!gameForm.get('guestPlayerId')?.value">
                                                     <option value="">Select team</option>
                                                     @for (team of filteredGuestTeams; track team.id) {
-                                                        <option [value]="team.id">{{ team.name }}</option>
+                                                        <option [value]="team.id" 
+                                                                [disabled]="team.id === gameForm.get('homeTeamId')?.value">
+                                                            {{ team.name }}
+                                                            @if (team.id === gameForm.get('homeTeamId')?.value) {
+                                                                (selected for home)
+                                                            }
+                                                        </option>
                                                     }
                                                 </select>
                                                 <button class="btn btn-outline-secondary" type="button"
@@ -292,30 +304,63 @@
                         @for (game of games; track game.id) {
                             <div class="list-group-item">
                                 <div class="d-flex justify-content-between align-items-center">
-                                    <div class="d-flex align-items-center">
+                                    <div class="d-flex align-items-center flex-grow-1">
                                         <button class="btn btn-sm btn-link me-2" (click)="toggleGameExpand(game)">
                                             <i class="bi" [ngClass]="game.isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
                                         </button>
-                                        <div>
+                                        <div class="flex-grow-1">
                                             <div class="fw-medium">
-                                                {{ game.homePlayer.teamName }} <span class="text-muted">vs</span> {{ game.guestPlayer.teamName }}
+                                                @if (game.homePlayer?.teamName) {
+                                                    {{ game.homePlayer.teamName }}
+                                                } @else if (game.homePlayer?.teamId) {
+                                                    {{ getTeamName(game.homePlayer.teamId) }}
+                                                } @else {
+                                                    <span class="text-muted">Team 1</span>
+                                                }
+                                                <span class="text-muted"> vs </span>
+                                                @if (game.guestPlayer?.teamName) {
+                                                    {{ game.guestPlayer.teamName }}
+                                                } @else if (game.guestPlayer?.teamId) {
+                                                    {{ getTeamName(game.guestPlayer.teamId) }}
+                                                } @else {
+                                                    <span class="text-muted">Team 2</span>
+                                                }
                                             </div>
                                             <small class="text-muted">
-                                                {{ game.homePlayer.playerName }} vs {{ game.guestPlayer.playerName }}
+                                                @if (game.homePlayer?.playerName) {
+                                                    {{ game.homePlayer.playerName }}
+                                                } @else if (game.homePlayer?.playerId) {
+                                                    {{ getPlayerName(game.homePlayer.playerId) }}
+                                                } @else {
+                                                    <span class="text-muted">Player 1</span>
+                                                }
+                                                <span class="text-muted"> vs </span>
+                                                @if (game.guestPlayer?.playerName) {
+                                                    {{ game.guestPlayer.playerName }}
+                                                } @else if (game.guestPlayer?.playerId) {
+                                                    {{ getPlayerName(game.guestPlayer.playerId) }}
+                                                } @else {
+                                                    <span class="text-muted">Player 2</span>
+                                                }
                                             </small>
                                         </div>
                                     </div>
-                                    <div>
+                                    <div class="d-flex align-items-center">
                                         @if (game.isCompleted) {
                                             <span class="badge bg-success me-2">
-                        {{ game.homeScore }} - {{ game.guestScore }}
-                      </span>
+                                                {{ game.homeScore }} - {{ game.guestScore }}
+                                            </span>
                                         } @else {
                                             <span class="badge bg-secondary me-2">Pending</span>
                                         }
-                                        <button class="btn btn-sm btn-outline-danger" (click)="deleteGame(game.id!)">
-                                            <i class="bi bi-trash"></i>
-                                        </button>
+                                        <div class="btn-group" role="group">
+                                            <button class="btn btn-sm btn-outline-primary me-1" (click)="toggleGameExpand(game)" [title]="game.isExpanded ? 'Collapse' : 'Edit score'">
+                                                <i class="bi" [ngClass]="game.isExpanded ? 'bi-x-lg' : 'bi-pencil'"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline-danger" (click)="$event.stopPropagation(); deleteGame(game.id!)" title="Delete game">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 

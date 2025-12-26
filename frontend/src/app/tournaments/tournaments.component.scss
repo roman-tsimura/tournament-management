@@ -1,3 +1,5 @@
+@use 'sass:color';
+
 // Variables
 $color-primary: #0d6efd;
 $color-danger: #dc3545;
@@ -140,7 +142,7 @@ $transition: all 0.2s ease-in-out;
       &:focus {
         color: $color-dark;
         background-color: #fff;
-        border-color: lighten($color-primary, 20%);
+        border-color: color.adjust($color-primary, $lightness: 20%);
         outline: 0;
         box-shadow: 0 0 0 0.25rem rgba($color-primary, 0.25);
       }
@@ -190,7 +192,7 @@ $transition: all 0.2s ease-in-out;
       &.selected {
         background-color: $color-primary;
         color: #fff;
-        border-color: darken($color-primary, 10%);
+        border-color: color.adjust($color-primary, $lightness: -10%);
       }
     }
   }
@@ -306,15 +308,15 @@ $transition: all 0.2s ease-in-out;
   }
 
   &-danger {
-    background-color: lighten($color-danger, 40%);
-    border: 1px solid lighten($color-danger, 30%);
-    color: darken($color-danger, 20%);
+    background-color: color.adjust($color-danger, $lightness: 40%);
+    border: 1px solid color.adjust($color-danger, $lightness: 30%);
+    color: color.adjust($color-danger, $lightness: -20%);
   }
 
   &-info {
-    background-color: lighten($color-primary, 45%);
-    border: 1px solid lighten($color-primary, 35%);
-    color: darken($color-primary, 20%);
+    background-color: color.adjust($color-primary, $lightness: 45%);
+    border: 1px solid color.adjust($color-primary, $lightness: 35%);
+    color: color.adjust($color-primary, $lightness: -20%);
   }
 }
 
@@ -388,7 +390,7 @@ input[type="number"] {
   .form-select:focus {
     color: $color-dark;
     background-color: #fff;
-    border-color: lighten($color-primary, 20%);
+    border-color: color.adjust($color-primary, $lightness: 20%);
     outline: 0;
     box-shadow: 0 0 0 0.25rem rgba($color-primary, 0.25);
   }
