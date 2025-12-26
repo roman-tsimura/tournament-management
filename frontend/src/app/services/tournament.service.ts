@@ -16,6 +16,7 @@ import {
 import { environment } from '../../environments/environment';
 import { Player } from '../models/player.model'; 
 import { Team } from '../models/team.model';
+import {tap} from "rxjs/operators";
 
 @Injectable({
   providedIn: 'root'
@@ -30,7 +31,16 @@ export class TournamentService {
   }
 
   getTournament(tournamentId: string): Observable<Tournament> {
-    return this.http.get<Tournament>(`${this.apiUrl}/${tournamentId}`);
+    return this.http.get<Tournament>(`${this.apiUrl}/${tournamentId}`).pipe(
+      tap({
+        next: (response) => {
+          console.log('Raw API response for tournament:', JSON.stringify(response, null, 2));
+        },
+        error: (error) => {
+          console.error('Error fetching tournament:', error);
+        }
+      })
+    );
   }
 
   updateGameScore(gameId: string, gameData: UpdateGameScoreRequest): Observable<Tournament> {
@@ -42,6 +52,10 @@ export class TournamentService {
 
   getAllTournaments(): Observable<Tournament[]> {
     return this.http.get<Tournament[]>(this.apiUrl);
+  }
+
+  getTournamentGames(tournamentId: string): Observable<Game[]> {
+    return this.http.get<Game[]>(`${this.apiUrl}/${tournamentId}/games`);
   }
 
   deleteTournament(tournamentId: string): Observable<void> {
