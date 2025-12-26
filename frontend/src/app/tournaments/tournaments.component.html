@@ -26,24 +26,24 @@
             @if (!isLoading && tournaments.length > 0) {
                 <div class="table-responsive">
                     <table class="table table-hover">
-                        <thead class="table-light">
-                        <tr>
-                            <th>Name</th>
-                            <th>Games</th>
-                            <th>Actions</th>
-                        </tr>
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Games</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
                         </thead>
                         <tbody>
                             @for (tournament of tournaments | slice: (page-1) * pageSize : (page-1) * pageSize + pageSize; track tournament.id) {
                                 <tr>
                                     <td>{{ tournament.name }}</td>
                                     <td>{{ tournament.games?.length || 0 }}</td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <button (click)="viewTournament(tournament.id, $event)" class="btn btn-outline-primary">
+                                    <td class="text-end">
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <button type="button" (click)="viewTournament(tournament.id, $event)" class="btn btn-sm btn-outline-primary" [disabled]="isLoading">
                                                 View
                                             </button>
-                                            <button (click)="deleteTournament(tournament.id, $event)" class="btn btn-outline-danger" [disabled]="isLoading">
+                                            <button type="button" (click)="deleteTournament(tournament.id, $event)" class="btn btn-sm btn-outline-danger" [disabled]="isLoading">
                                                 <i class="bi bi-trash"></i> Delete
                                             </button>
                                         </div>
