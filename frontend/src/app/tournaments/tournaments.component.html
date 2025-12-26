@@ -310,34 +310,34 @@
                                         </button>
                                         <div class="flex-grow-1">
                                             <div class="fw-medium">
-                                                @if (game.homePlayer?.teamName) {
+                                                @if (game.homePlayer.teamName) {
                                                     {{ game.homePlayer.teamName }}
-                                                } @else if (game.homePlayer?.teamId) {
+                                                } @else if (game.homePlayer.teamId) {
                                                     {{ getTeamName(game.homePlayer.teamId) }}
                                                 } @else {
                                                     <span class="text-muted">Team 1</span>
                                                 }
                                                 <span class="text-muted"> vs </span>
-                                                @if (game.guestPlayer?.teamName) {
+                                                @if (game.guestPlayer.teamName) {
                                                     {{ game.guestPlayer.teamName }}
-                                                } @else if (game.guestPlayer?.teamId) {
+                                                } @else if (game.guestPlayer.teamId) {
                                                     {{ getTeamName(game.guestPlayer.teamId) }}
                                                 } @else {
                                                     <span class="text-muted">Team 2</span>
                                                 }
                                             </div>
                                             <small class="text-muted">
-                                                @if (game.homePlayer?.playerName) {
+                                                @if (game.homePlayer.playerName) {
                                                     {{ game.homePlayer.playerName }}
-                                                } @else if (game.homePlayer?.playerId) {
+                                                } @else if (game.homePlayer.playerId) {
                                                     {{ getPlayerName(game.homePlayer.playerId) }}
                                                 } @else {
                                                     <span class="text-muted">Player 1</span>
                                                 }
                                                 <span class="text-muted"> vs </span>
-                                                @if (game.guestPlayer?.playerName) {
+                                                @if (game.guestPlayer.playerName) {
                                                     {{ game.guestPlayer.playerName }}
-                                                } @else if (game.guestPlayer?.playerId) {
+                                                } @else if (game.guestPlayer.playerId) {
                                                     {{ getPlayerName(game.guestPlayer.playerId) }}
                                                 } @else {
                                                     <span class="text-muted">Player 2</span>
