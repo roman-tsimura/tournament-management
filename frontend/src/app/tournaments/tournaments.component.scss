@@ -258,13 +258,32 @@ $transition: all 0.2s ease-in-out;
 
   .btn-group {
     gap: 0.25rem;
+    border-radius: $border-radius;
+    overflow: hidden;
     
     .btn {
       height: 31px;
-      padding: 0.25rem 0.5rem;
+      padding: 0.25rem 0.75rem;
       font-size: 0.875rem;
-      border-radius: $border-radius;
+      border-radius: 0;
       margin-right: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      
+      i {
+        margin-right: 0.25rem;
+      }
+      
+      &:first-child {
+        border-top-left-radius: $border-radius;
+        border-bottom-left-radius: $border-radius;
+      }
+      
+      &:last-child {
+        border-top-right-radius: $border-radius;
+        border-bottom-right-radius: $border-radius;
+      }
     }
   }
   }

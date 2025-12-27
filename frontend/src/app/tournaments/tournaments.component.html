@@ -4,8 +4,13 @@
         <div class="tournament-list">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Tournaments</h2>
-                <button class="btn btn-primary" (click)="createNewTournament()" [disabled]="isLoading">
-                    <i class="bi bi-plus-circle me-1"></i> Create New Tournament
+                <button type="button" (click)="createNewTournament()" class="btn btn-primary" [class.disabled]="isLoading">
+                    @if (isLoading) {
+                        <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                    } @else {
+                        <i class="bi bi-plus-circle me-1"></i>
+                    }
+                    Create New Tournament
                 </button>
             </div>
 
@@ -102,7 +107,7 @@
                             <button type="button" class="btn btn-outline-secondary me-md-2" (click)="currentView = 'list'">
                                 Cancel
                             </button>
-                            <button type="submit" class="btn btn-primary" [disabled]="tournamentForm.invalid || isLoading">
+                            <button type="submit" class="btn btn-primary" [class.disabled]="tournamentForm.invalid || isLoading">
                                 @if (isLoading) {
                                     <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
                                     Creating...
@@ -310,34 +315,34 @@
                                         </button>
                                         <div class="flex-grow-1">
                                             <div class="fw-medium">
-                                                @if (game.homePlayer.teamName) {
+                                                @if (game?.homePlayer?.teamName) {
                                                     {{ game.homePlayer.teamName }}
-                                                } @else if (game.homePlayer.teamId) {
+                                                } @else if (game?.homePlayer?.teamId) {
                                                     {{ getTeamName(game.homePlayer.teamId) }}
                                                 } @else {
                                                     <span class="text-muted">Team 1</span>
                                                 }
                                                 <span class="text-muted"> vs </span>
-                                                @if (game.guestPlayer.teamName) {
+                                                @if (game?.guestPlayer?.teamName) {
                                                     {{ game.guestPlayer.teamName }}
-                                                } @else if (game.guestPlayer.teamId) {
+                                                } @else if (game?.guestPlayer?.teamId) {
                                                     {{ getTeamName(game.guestPlayer.teamId) }}
                                                 } @else {
                                                     <span class="text-muted">Team 2</span>
                                                 }
                                             </div>
                                             <small class="text-muted">
-                                                @if (game.homePlayer.playerName) {
+                                                @if (game?.homePlayer?.playerName) {
                                                     {{ game.homePlayer.playerName }}
-                                                } @else if (game.homePlayer.playerId) {
+                                                } @else if (game?.homePlayer?.playerId) {
                                                     {{ getPlayerName(game.homePlayer.playerId) }}
                                                 } @else {
                                                     <span class="text-muted">Player 1</span>
                                                 }
                                                 <span class="text-muted"> vs </span>
-                                                @if (game.guestPlayer.playerName) {
+                                                @if (game?.guestPlayer?.playerName) {
                                                     {{ game.guestPlayer.playerName }}
-                                                } @else if (game.guestPlayer.playerId) {
+                                                } @else if (game?.guestPlayer?.playerId) {
                                                     {{ getPlayerName(game.guestPlayer.playerId) }}
                                                 } @else {
                                                     <span class="text-muted">Player 2</span>
@@ -353,12 +358,12 @@
                                         } @else {
                                             <span class="badge bg-secondary me-2">Pending</span>
                                         }
-                                        <div class="btn-group" role="group">
-                                            <button class="btn btn-sm btn-outline-primary me-1" (click)="toggleGameExpand(game)" [title]="game.isExpanded ? 'Collapse' : 'Edit score'">
-                                                <i class="bi" [ngClass]="game.isExpanded ? 'bi-x-lg' : 'bi-pencil'"></i>
+                                        <div class="d-flex justify-content-end gap-1">
+                                            <button type="button" (click)="toggleGameExpand(game)" class="btn btn-sm btn-outline-primary px-2 py-1" [title]="game.isExpanded ? 'Collapse' : 'Edit score'">
+                                                {{ game.isExpanded ? 'Cancel' : 'Edit' }}
                                             </button>
-                                            <button class="btn btn-sm btn-outline-danger" (click)="$event.stopPropagation(); deleteGame(game.id!)" title="Delete game">
-                                                <i class="bi bi-trash"></i>
+                                            <button type="button" (click)="$event.stopPropagation(); deleteGame(game.id!)" class="btn btn-sm btn-outline-danger" title="Delete game">
+                                                <i class="bi bi-trash"></i> Delete
                                             </button>
                                         </div>
                                     </div>
@@ -366,33 +371,44 @@
 
                                 @if (game.isExpanded) {
                                     <div class="mt-3 pt-3 border-top">
-                                        <form #scoreForm="ngForm" (ngSubmit)="updateGameScore(game, homeScore.value, guestScore.value)" class="row g-3">
-                                            <div class="col-5">
-                                                <div class="input-group">
-                                                    <input type="number" min="0" class="form-control" #homeScore [value]="game.homeScore || ''"
-                                                           [disabled]="game.isCompleted" required>
-                                                </div>
-                                            </div>
-                                            <div class="col-2 text-center">
-                                                <span class="align-middle">-</span>
-                                            </div>
-                                            <div class="col-5">
-                                                <div class="input-group">
-                                                    <input type="number" min="0" class="form-control" #guestScore [value]="game.guestScore || ''"
-                                                           [disabled]="game.isCompleted" required>
-                                                </div>
-                                            </div>
-                                            @if (!game.isCompleted) {
-                                                <div class="col-12">
-                                                    <button type="submit" class="btn btn-sm btn-primary">
-                                                        <i class="bi bi-check-lg me-1"></i> Save Score
-                                                    </button>
-                                                    <button type="button" class="btn btn-sm btn-outline-secondary ms-2" (click)="game.isExpanded = false">
-                                                        Cancel
-                                                    </button>
-                                                </div>
+                                        @if (scoreForms.has(game.id!)) {
+                                            @let scoreForm = scoreForms.get(game.id!);
+                                            @if (scoreForm) {
+                                                <form [formGroup]="scoreForm" (ngSubmit)="updateGameScore(game, scoreForm)" class="row g-3">
+                                                    <div class="col-5">
+                                                        <div class="input-group">
+                                                            <span class="input-group-text">Home</span>
+                                                            <input type="number" min="0" step="1" class="form-control" formControlName="homeScore">
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-2 text-center">
+                                                        <span class="align-middle">-</span>
+                                                    </div>
+                                                    <div class="col-5">
+                                                        <div class="input-group">
+                                                            <span class="input-group-text">Away</span>
+                                                            <input type="number" min="0" step="1" class="form-control" formControlName="guestScore">
+                                                        </div>
+                                                    </div>
+                                                    @if (game.isCompleted) {
+                                                        <div class="col-12">
+                                                            <button type="button" class="btn btn-outline-secondary" (click)="enableScoreEditing(game)">
+                                                                <i class="bi bi-pencil me-1"></i> Edit Score
+                                                            </button>
+                                                        </div>
+                                                    } @else {
+                                                        <div class="col-12">
+                                                            <button type="submit" class="btn btn-primary me-2" [disabled]="scoreForm.invalid">
+                                                                <i class="bi bi-check-lg me-1"></i> Save Score
+                                                            </button>
+                                                            <button type="button" class="btn btn-outline-secondary" (click)="game.isExpanded = false">
+                                                                <i class="bi bi-x-lg me-1"></i> Cancel
+                                                            </button>
+                                                        </div>
+                                                    }
+                                                </form>
                                             }
-                                        </form>
+                                        }
                                     </div>
                                 }
                             </div>

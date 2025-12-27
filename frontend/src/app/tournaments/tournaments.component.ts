@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import {AbstractControl, FormsModule} from '@angular/forms';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormArray, FormControl } from '@angular/forms';
 import { RouterModule, Router, ActivatedRoute, NavigationEnd, RouterLink } from '@angular/router';
 import {
@@ -64,6 +64,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   tournaments: Tournament[] = [];
   currentTournament: Tournament | null = null;
   games: GameWithSelection[] = [];
+  scoreForms = new Map<string, FormGroup>();
   availablePlayers: PlayerSelection[] = [];
   availableTeams: TeamSelection[] = [];
   filteredHomeTeams: TeamSelection[] = [];
@@ -81,9 +82,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   // UI state
   isLoading = false;
   isSubmitting = false;
-  selectedPlayerTeams: { [key: string]: TeamSelection[] } = {};
   currentGame: Game | null = null;
-  currentRound = 1;
   stats: TournamentStats | null = null;
   
   // Form groups
@@ -97,10 +96,10 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   set currentView(value: TournamentView) {
     this._currentView = value;
   }
-  
-  // Form getters
-  get gamePlayers() {
-    return this.gameForm.get('players') as FormArray;
+
+  ngOnDestroy() {
+    // Unsubscribe from all subscriptions to prevent memory leaks
+    this.routerSubscription.unsubscribe();
   }
   
   get homePlayerId() {
@@ -119,7 +118,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private datePipe: DatePipe,
     private modalService: NgbModal
   ) {
     this.tournamentForm = this.fb.group({
@@ -209,8 +207,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       } else if (view === 'create') {
         // Handle create view
         this._currentView = 'create';
-        this.loadPlayers();
-        this.loadTeams();
       } else {
         // Default to list view
         this._currentView = 'list';
@@ -223,12 +219,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     }
     
     this.cdr.detectChanges();
-  }
-
-  ngOnDestroy(): void {
-    if (this.routerSubscription) {
-      this.routerSubscription.unsubscribe();
-    }
   }
 
   loadTournament(): void {
@@ -313,6 +303,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
           this.filteredGuestTeams = [...this.availableTeams];
 
           console.log('Updated tournament with all data:', {
+            games: this.games,
             gamesCount: games?.length,
             availablePlayers: this.availablePlayers,
             availableTeams: this.availableTeams
@@ -499,39 +490,45 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         });
   }
   
-  updateGameScore(game: GameWithSelection, homeScore: string, guestScore: string): void {
-    if (!game.id) return;
+  updateGameScore(game: GameWithSelection, form: FormGroup): void {
+    if (!game.id || !this.tournamentId || form.invalid) return;
     
-    const homeScoreNum = parseInt(homeScore, 10);
-    const guestScoreNum = parseInt(guestScore, 10);
-    
-    if (isNaN(homeScoreNum) || isNaN(guestScoreNum) || homeScoreNum < 0 || guestScoreNum < 0) {
-      alert('Please enter valid scores (non-negative numbers)');
-      return;
-    }
-    
-    this.tournamentService.updateGameScore(game.id, {
+    this.isSubmitting = true;
+    const formValue = form.getRawValue();
+    const updateRequest: UpdateGameScoreRequest = {
       gameId: game.id,
-      homeScore: homeScoreNum,
-      guestScore: guestScoreNum
-    }).subscribe({
-      next: (updatedGame) => {
-        const index = this.games.findIndex(g => g.id === game.id);
-        if (index !== -1) {
-          this.games[index] = {
-            ...this.games[index],
-            ...updatedGame,
-            isExpanded: false
-          };
+      homeScore: formValue.homeScore,
+      guestScore: formValue.guestScore
+    };
+
+    this.tournamentService.updateGameScore(game.id, updateRequest)
+      .subscribe({
+        next: (updatedGame) => {
+          // Update the game in the local array
+          const index = this.games.findIndex(g => g.id === game.id);
+          if (index !== -1) {
+            this.games[index] = { 
+              ...this.games[index], 
+              ...updatedGame,
+              isCompleted: true
+            };
+            
+            // Update the form state
+            const scoreForm = this.scoreForms.get(game.id!);
+            if (scoreForm) {
+              scoreForm.disable();
+            }
+          }
           this.cdr.detectChanges();
+        },
+        error: (error) => {
+          console.error('Error updating game score:', error);
+          // Optionally show an error message to the user
+        },
+        complete: () => {
+          this.isSubmitting = false;
         }
-        // In a real app, show a success message
-      },
-      error: (error) => {
-        console.error('Error updating game score:', error);
-        alert('Failed to update game score: ' + (error.error?.message || error.message || 'Unknown error'));
-      }
-    });
+      });
   }
   
   deleteGame(gameId: string): void {
@@ -564,6 +561,49 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   
   toggleGameExpand(game: GameWithSelection): void {
     game.isExpanded = !game.isExpanded;
+    
+    if (game.isExpanded && !this.scoreForms.has(game.id!)) {
+      this.scoreForms.set(game.id!, this.createScoreForm(game));
+    }
+  }
+  
+  private createScoreForm(game: Game): FormGroup {
+    const formGroup = this.fb.group({
+      homeScore: [
+        { value: game.homeScore || 0, disabled: false },
+        [Validators.required, Validators.min(0)]
+      ],
+      guestScore: [
+        { value: game.guestScore || 0, disabled: false },
+        [Validators.required, Validators.min(0)]
+      ]
+    });
+    
+    // Set initial disabled state using form control API
+    if (game.isCompleted) {
+      formGroup.disable();
+    }
+    
+    return formGroup;
+  }
+  
+  // Helper method to safely disable/enable form controls
+  private setFormControlState(control: AbstractControl | null, isDisabled: boolean): void {
+    if (!control) return;
+    
+    if (isDisabled) {
+      control.disable();
+    } else {
+      control.enable();
+    }
+  }
+  
+  public enableScoreEditing(game: GameWithSelection): void {
+    game.isCompleted = false;
+    const scoreForm = this.scoreForms.get(game.id!);
+    if (scoreForm) {
+      scoreForm.enable();
+    }
   }
 
   async loadTournaments(): Promise<void> {
