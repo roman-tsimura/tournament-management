@@ -118,4 +118,12 @@ public class TournamentController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+    
+    @DeleteMapping("/{tournamentId}/games/{gameId}")
+    public ResponseEntity<Void> deleteGame(
+            @PathVariable Long tournamentId,
+            @PathVariable Long gameId) {
+        gameService.deleteGame(tournamentId, gameId);
+        return ResponseEntity.noContent().build();
+    }
 }

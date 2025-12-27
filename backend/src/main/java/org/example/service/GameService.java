@@ -84,4 +84,15 @@ public class GameService {
             return gameRepository.save(game);
         }).orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
     }
+
+    @Transactional
+    public void deleteGame(Long tournamentId, Long gameId) {
+        Game game = gameRepository.findById(gameId)
+                .orElseThrow(() -> new ResourceNotFoundException("Game not found with id: " + gameId));
+
+        if (!game.getTournament().getId().equals(tournamentId)) {
+            throw new ResourceNotFoundException("Game " + gameId + " does not belong to tournament " + tournamentId);
+        }
+        gameRepository.delete(game);
+    }
 }

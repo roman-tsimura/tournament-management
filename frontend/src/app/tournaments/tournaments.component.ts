@@ -261,8 +261,10 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         )
       ]).toPromise() || [[], [], []];
 
-      // Update component state with loaded data
-      this.games = (games || []).map(game => ({
+      // Update component state with loaded data, sorted by creation date (newest first)
+      this.games = (games || []).sort((a, b) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ).map(game => ({
         ...game,
         isExpanded: false
       }));
@@ -491,7 +493,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       });
   }
   
-  deleteGame(gameId: string): void {
+  async deleteGame(gameId: string): Promise<void> {
     if (!this.tournamentId) return;
     
     const modalRef: NgbModalRef = this.modalService.open(ConfirmDialogComponent, { centered: true });
@@ -499,24 +501,24 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     modalRef.componentInstance.message = 'Are you sure you want to delete this game?';
     modalRef.componentInstance.confirmText = 'Delete';
     
-    modalRef.result.then(
-      (result) => {
-        if (result === 'confirm') {
-          this.tournamentService.deleteGame(this.tournamentId!, gameId)
-            .subscribe({
-              next: () => {
-                this.games = this.games.filter(g => g.id !== gameId);
-                // In a real app, show a success message
-              },
-              error: (error) => {
-                console.error('Error deleting game:', error);
-                // In a real app, show a user-friendly error message
-              }
-            });
+    try {
+      const result = await modalRef.result;
+      if (result === 'confirm') {
+        this.isLoading = true;
+        await this.tournamentService.deleteGame(this.tournamentId, gameId).toPromise();
+        await this.loadTournament();
+        
+        if (this.tournamentId) {
+          await this.loadTournamentStats();
         }
-      },
-      () => {}
-    );
+      }
+    } catch (error) {
+      if (error !== 'cancel') {
+        console.error('Error deleting game:', error);
+      }
+    } finally {
+      this.isLoading = false;
+    }
   }
   
   toggleGameExpand(game: GameWithSelection): void {
@@ -631,13 +633,20 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         this.isLoading = true;
         await this.tournamentService.deleteTournament(tournamentId).toPromise();
         
-        // Remove the deleted tournament from the list
-        this.tournaments = this.tournaments.filter(t => t.id !== tournamentId);
-        this.collectionSize = this.tournaments.length;
+        // Reload the tournaments to get the updated list from the server
+        await this.loadTournaments();
+        
+        // Reset pagination if we're on a page that no longer exists
+        const totalPages = Math.ceil(this.tournaments.length / this.pageSize);
+        if (this.page > totalPages && totalPages > 0) {
+          this.page = totalPages;
+        }
       }
     } catch (error) {
-      // Handle modal dismiss (user clicked cancel or backdrop)
-      console.log('Deletion cancelled');
+      // Handle modal dismiss (user clicked cancel or backdrop) or API errors
+      if (error !== 'cancel') {
+        console.error('Error deleting tournament:', error);
+      }
     } finally {
       this.isLoading = false;
     }
