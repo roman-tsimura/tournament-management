@@ -18,7 +18,7 @@ import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
 import { NgbPaginationModule, NgbModal, NgbModalRef, NgbDropdownModule, NgbNavModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { DatePipe } from '@angular/common';
-import { filter, switchMap, tap, catchError, finalize, map } from 'rxjs/operators';
+import { filter, catchError, finalize } from 'rxjs/operators';
 import { Subscription, of, forkJoin } from 'rxjs';
 
 type TournamentView = 'list' | 'create' | 'tournament' | 'game' | 'teams';
@@ -75,7 +75,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   // UI state
   isLoading = false;
   isSubmitting = false;
-  currentGame: Game | null = null;
+  isUpdatingScore = false;
   stats: TournamentStats | null = null;
   
   // Form groups
@@ -214,111 +214,79 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     this.cdr.detectChanges();
   }
 
-  loadTournament(): void {
-    // Get the ID from the route if not already set
-    const idFromRoute = this.route.snapshot.firstChild?.paramMap.get('id');
-    this.tournamentId = this.tournamentId !== null ? this.tournamentId : (idFromRoute || null);
+  async loadTournament(): Promise<void> {
+    try {
+      // Get the ID from the route if not already set
+      const idFromRoute = this.route.snapshot.firstChild?.paramMap.get('id');
+      this.tournamentId = this.tournamentId !== null ? this.tournamentId : (idFromRoute || null);
 
-    if (!this.tournamentId) {
-      console.error('No tournament ID provided');
-      this.router.navigate(['/tournaments']);
-      return;
+      if (!this.tournamentId) {
+        console.error('No tournament ID provided');
+        await this.router.navigate(['/tournaments']);
+        return;
+      }
+
+      this.isLoading = true;
+      this.cdr.detectChanges(); // Update the view to show loading state
+
+      // First, get the basic tournament data
+      const tournament = await this.tournamentService.getTournament(this.tournamentId).toPromise();
+      
+      if (!tournament) {
+        throw new Error('Tournament not found');
+      }
+
+      this.currentTournament = tournament;
+      this._currentView = 'tournament';
+
+      // Load games, players, and teams in parallel with proper error handling
+      const [games, players, teams] = await forkJoin([
+        this.tournamentService.getTournamentGames(tournament.id).pipe(
+          catchError(error => {
+            console.error('Error loading games:', error);
+            return of([] as Game[]);
+          })
+        ),
+        this.playerService.getPlayers().pipe(
+          catchError(error => {
+            console.error('Error loading players:', error);
+            return of([] as Player[]);
+          })
+        ),
+        this.teamService.getTeams().pipe(
+          catchError(error => {
+            console.error('Error loading teams:', error);
+            return of([] as Team[]);
+          })
+        )
+      ]).toPromise() || [[], [], []];
+
+      // Update component state with loaded data
+      this.games = (games || []).map(game => ({
+        ...game,
+        isExpanded: false
+      }));
+      
+      this.players = players || [];
+      this.teams = teams || [];
+      
+      // Initialize score forms for each game
+      this.games.forEach(game => {
+        if (game.id) {
+          this.scoreForms.set(game.id, this.createScoreForm(game));
+        }
+      });
+
+      // Initialize player selections
+      this.initializePlayerSelections();
+
+    } catch (error) {
+      console.error('Error loading tournament:', error);
+      await this.router.navigate(['/tournaments']);
+    } finally {
+      this.isLoading = false;
+      this.cdr.detectChanges();
     }
-
-    this.isLoading = true;
-    this.cdr.detectChanges(); // Update the view to show loading state
-
-    // Reset the game form when loading a tournament
-    this.initNewGame();
-
-    // First, get the basic tournament data
-    this.tournamentService.getTournament(this.tournamentId).pipe(
-        switchMap(tournament => {
-          if (!tournament) {
-            throw new Error('Tournament not found');
-          }
-
-          this.currentTournament = tournament;
-          this._currentView = 'tournament';
-
-          // Load games, players, and teams in parallel
-          return forkJoin([
-            this.tournamentService.getTournamentGames(tournament.id).pipe(
-              catchError(error => {
-                console.error('Error loading games:', error);
-                return of([]);
-              })
-            ),
-            this.playerService.getPlayers().pipe(
-              catchError(error => {
-                console.error('Error loading players:', error);
-                return of([]);
-              })
-            ),
-            this.teamService.getTeams().pipe(
-              catchError(error => {
-                console.error('Error loading teams:', error);
-                return of([]);
-              })
-            )
-          ]).pipe(
-            map(([games, players, teams]) => ({
-              tournament,
-              games,
-              players,
-              teams
-            }))
-          );
-        }),
-        tap(({ games, players, teams }) => {
-          // Update tournament with games and count
-          if (this.currentTournament) {
-            this.currentTournament.games = games || [];
-            this.currentTournament.gameCount = games?.length || 0;
-          }
-
-          // Update games array for the component
-          this.games = (games || []).map(g => ({ ...g, isExpanded: false }));
-
-          // Update available players
-          this.players = (players || []).map(player => ({
-            id: player.id,
-            name: `${player.name}`.trim()
-          }));
-
-          // Update available teams
-          this.teams = [...(teams || [])];
-          this.filteredHomeTeams = [...this.teams];
-          this.filteredGuestTeams = [...this.teams];
-
-          console.log('Updated tournament with all data:', {
-            games: this.games,
-            gamesCount: games?.length,
-            availablePlayers: this.players,
-            availableTeams: this.teams
-          });
-        }),
-        catchError((error) => {
-          console.error('Error loading tournament data:', error);
-          this.router.navigate(['/tournaments']);
-          return of(null);
-        }),
-        finalize(() => {
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        })
-    ).subscribe();
-  }
-
-  initNewGame(): void {
-    this.gameForm.reset({
-      homePlayerId: '',
-      homeTeamId: '',
-      guestPlayerId: '',
-      guestTeamId: ''
-    });
-    this.filteredHomeTeams = [...this.teams];
-    this.filteredGuestTeams = [...this.teams];
   }
 
   onPlayerSelected(playerId: string, playerType: 'home' | 'guest'): void {
@@ -482,7 +450,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   updateGameScore(game: GameWithSelection, form: FormGroup): void {
     if (!game.id || !this.tournamentId || form.invalid) return;
     
-    this.isSubmitting = true;
+    this.isUpdatingScore = true;
     const formValue = form.getRawValue();
     const updateRequest: UpdateGameScoreRequest = {
       gameId: game.id,
@@ -491,31 +459,34 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     };
 
     this.tournamentService.updateGameScore(game.id, updateRequest)
+      .pipe(
+        finalize(() => {
+          this.isUpdatingScore = false;
+          this.cdr.detectChanges();
+        })
+      )
       .subscribe({
-        next: (updatedGame) => {
+        next: () => {
           // Update the game in the local array
-          const index = this.games.findIndex(g => g.id === game.id);
-          if (index !== -1) {
-            this.games[index] = { 
-              ...this.games[index], 
-              ...updatedGame,
-              isCompleted: true
-            };
-            
-            // Update the form state
-            const scoreForm = this.scoreForms.get(game.id!);
-            if (scoreForm) {
-              scoreForm.disable();
-            }
+          const updatedGame = this.games.find(g => g.id === game.id);
+          if (updatedGame) {
+            updatedGame.homeScore = formValue.homeScore;
+            updatedGame.guestScore = formValue.guestScore;
+            updatedGame.isExpanded = false; // Close the expanded view
           }
+          
+          // Refresh stats without reloading the entire tournament
+          if (this.tournamentId) {
+            this.loadTournamentStats().catch(error => {
+              console.error('Error refreshing tournament stats:', error);
+            });
+          }
+          
           this.cdr.detectChanges();
         },
         error: (error) => {
           console.error('Error updating game score:', error);
           // Optionally show an error message to the user
-        },
-        complete: () => {
-          this.isSubmitting = false;
         }
       });
   }
@@ -550,30 +521,23 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   
   toggleGameExpand(game: GameWithSelection): void {
     game.isExpanded = !game.isExpanded;
-    
+
     if (game.isExpanded && !this.scoreForms.has(game.id!)) {
       this.scoreForms.set(game.id!, this.createScoreForm(game));
     }
   }
   
   private createScoreForm(game: Game): FormGroup {
-    const formGroup = this.fb.group({
+    return this.fb.group({
       homeScore: [
-        { value: game.homeScore || 0, disabled: false },
+        game.homeScore ?? 0,
         [Validators.required, Validators.min(0)]
       ],
       guestScore: [
-        { value: game.guestScore || 0, disabled: false },
+        game.guestScore ?? 0,
         [Validators.required, Validators.min(0)]
       ]
     });
-    
-    // Set initial disabled state using form control API
-    if (game.isCompleted) {
-      formGroup.disable();
-    }
-    
-    return formGroup;
   }
   
   // Helper method to safely disable/enable form controls
@@ -588,7 +552,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
   
   public enableScoreEditing(game: GameWithSelection): void {
-    game.isCompleted = false;
     const scoreForm = this.scoreForms.get(game.id!);
     if (scoreForm) {
       scoreForm.enable();
@@ -724,21 +687,15 @@ export class TournamentsComponent implements OnInit, OnDestroy {
         } as TournamentSettings
       };
 
-      this.currentTournament = await this.tournamentService.createTournament(tournamentData).toPromise() || null;
-      
-      // Wait for stats to load before navigating
-      await this.loadTournamentStats();
+      await this.tournamentService.createTournament(tournamentData).toPromise();
       
       // Reset form and state
       this.tournamentForm.reset();
       this.selectedPlayers = [];
       this.playerSelections = [];
       
-      // Update view after a small delay to ensure UI updates
-      setTimeout(() => {
-        this.currentView = 'tournament';
-        this.cdr.detectChanges();
-      }, 100);
+      // Redirect to tournaments list
+      this.router.navigate(['/tournaments']);
       
     } catch (error) {
       console.error('Error creating tournament:', error);

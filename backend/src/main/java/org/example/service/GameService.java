@@ -79,14 +79,8 @@ public class GameService {
     @Transactional
     public void updateGameScore(Long gameId, Integer score1, Integer score2) {
         gameRepository.findById(gameId).map(game -> {
-            if (game.getStatus() == Game.GameStatus.COMPLETED) {
-                throw new IllegalStateException("Cannot update scores of a completed game");
-            }
             game.setScore1(score1);
             game.setScore2(score2);
-            if (score1 != null && score2 != null) {
-                game.setStatus(Game.GameStatus.COMPLETED);
-            }
             return gameRepository.save(game);
         }).orElseThrow(() -> new RuntimeException("Game not found with id: " + gameId));
     }

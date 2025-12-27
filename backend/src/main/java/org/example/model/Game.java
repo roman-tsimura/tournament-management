@@ -12,9 +12,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "games")
 public class Game implements java.io.Serializable {
-    public enum GameStatus {
-        SCHEDULED, COMPLETED
-    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -43,10 +40,6 @@ public class Game implements java.io.Serializable {
     private Integer score1;
     private Integer score2;
 
-    @Column(nullable = false, length = 20)
-    @Enumerated(EnumType.STRING)
-    private GameStatus status = GameStatus.SCHEDULED;
-
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
     private LocalDateTime createdAt;
@@ -69,9 +62,6 @@ public class Game implements java.io.Serializable {
     @PreUpdate
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
-        if (status == GameStatus.COMPLETED && (score1 == null || score2 == null)) {
-            throw new IllegalStateException("Cannot complete game without both scores");
-        }
     }
 
     @Transient

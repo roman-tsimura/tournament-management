@@ -21,7 +21,6 @@ export interface Game {
   guestPlayer: GamePlayer;
   homeScore: number | null;
   guestScore: number | null;
-  isCompleted: boolean;
   createdAt: Date;
   updatedAt: Date;
 }

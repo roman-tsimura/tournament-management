@@ -348,8 +348,8 @@
                                         </div>
                                     </div>
                                     <div class="d-flex align-items-center">
-                                        @if (game.isCompleted) {
-                                            <span class="badge bg-success me-2">
+                                        @if (game.homeScore !== null && game.guestScore !== null) {
+                                            <span class="badge bg-success me-1">
                                                 {{ game.homeScore }} - {{ game.guestScore }}
                                             </span>
                                         } @else {
@@ -387,22 +387,12 @@
                                                             <input type="number" min="0" step="1" class="form-control" formControlName="guestScore">
                                                         </div>
                                                     </div>
-                                                    @if (game.isCompleted) {
-                                                        <div class="col-12">
-                                                            <button type="button" class="btn btn-outline-secondary" (click)="enableScoreEditing(game)">
-                                                                <i class="bi bi-pencil me-1"></i> Edit Score
-                                                            </button>
-                                                        </div>
-                                                    } @else {
-                                                        <div class="col-12">
-                                                            <button type="submit" class="btn btn-primary me-2" [disabled]="scoreForm.invalid">
-                                                                <i class="bi bi-check-lg me-1"></i> Save Score
-                                                            </button>
-                                                            <button type="button" class="btn btn-outline-secondary" (click)="game.isExpanded = false">
-                                                                <i class="bi bi-x-lg me-1"></i> Cancel
-                                                            </button>
-                                                        </div>
-                                                    }
+                                                    <div class="col-12 d-flex justify-content-start gap-2">
+                                                        <button type="submit" class="btn btn-primary d-flex align-items-center" [disabled]="scoreForm.invalid">
+                                                            <i class="bi bi-check-lg"></i>
+                                                            <span>Save Score</span>
+                                                        </button>
+                                                    </div>
                                                 </form>
                                             }
                                         }

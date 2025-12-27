@@ -1,14 +1,14 @@
 package org.example.mapper;
 
-import org.example.dto.GameDTO;
 import org.example.dto.CreateGameRequest;
+import org.example.dto.GameDTO;
 import org.example.model.Game;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Named;
 import org.example.model.Player;
 import org.example.model.Team;
 import org.example.model.Tournament;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 
 @Mapper(componentModel = "spring", uses = {PlayerMapper.class, TeamMapper.class})
 public interface GameMapper {
@@ -21,7 +21,6 @@ public interface GameMapper {
     @Mapping(target = "tournament", source = "tournamentId", qualifiedByName = "mapTournamentIdToTournament")
     @Mapping(target = "createdAt", ignore = true)
     @Mapping(target = "updatedAt", ignore = true)
-    @Mapping(target = "status", expression = "java(gameDTO.getStatus() != null ? Game.GameStatus.valueOf(gameDTO.getStatus()) : Game.GameStatus.SCHEDULED)")
     Game toEntity(GameDTO gameDTO);
 
     @Mapping(target = "player1Id", source = "player1.id")
@@ -29,7 +28,6 @@ public interface GameMapper {
     @Mapping(target = "team1Id", source = "team1.id")
     @Mapping(target = "team2Id", source = "team2.id")
     @Mapping(target = "tournamentId", source = "tournament.id")
-    @Mapping(target = "status", source = "status", defaultExpression = "java(org.example.model.Game.GameStatus.SCHEDULED.toString())")
     GameDTO toDTO(Game game);
     
     @Mapping(target = "id", ignore = true)
@@ -42,7 +40,6 @@ public interface GameMapper {
     @Mapping(target = "updatedAt", ignore = true)
     @Mapping(target = "score1", ignore = true)
     @Mapping(target = "score2", ignore = true)
-    @Mapping(target = "status", constant = "SCHEDULED")
     Game toEntity(CreateGameRequest createGameRequest);
     
     @Named("mapPlayerIdToPlayer")

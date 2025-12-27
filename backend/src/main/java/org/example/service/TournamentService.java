@@ -73,8 +73,9 @@ public class TournamentService {
                 .orElseThrow(() -> new EntityNotFoundException("Game not found with id: " + gameId));
 
         gameService.updateGameScore(gameId, scoreUpdate.getScore1(), scoreUpdate.getScore2());
-
-        if (game.getStatus() == Game.GameStatus.COMPLETED) {
+        
+        // Update player points if both scores are set
+        if (scoreUpdate.getScore1() != null && scoreUpdate.getScore2() != null) {
             updatePlayerPoints(game);
         }
 
@@ -116,9 +117,9 @@ public class TournamentService {
             List<Game> games = gameRepository.findByTournament(tournament);
             stats.setTotalGames(games.size());
 
-            // Count completed games
+            // Count games with both scores set
             long completedGames = games.stream()
-                    .filter(game -> game.getStatus() == Game.GameStatus.COMPLETED)
+                    .filter(game -> game.getScore1() != null && game.getScore2() != null)
                     .count();
             stats.setCompletedGames((int) completedGames);
 
@@ -128,9 +129,9 @@ public class TournamentService {
             // Calculate player statistics
             Map<Long, TournamentStatsDTO.PlayerStats> playerStatsMap = new HashMap<>();
 
-            // Process completed games for player stats
+            // Process games with scores for player stats
             for (Game game : games) {
-                if (game.getStatus() == Game.GameStatus.COMPLETED) {
+                if (game.getScore1() != null && game.getScore2() != null) {
                     // Update player stats
                     if (game.getPlayer1() != null) {
                         updatePlayerStats(playerStatsMap, game.getPlayer1(),

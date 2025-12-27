@@ -68,7 +68,6 @@ export class TournamentService {
       },
       homeScore: backendGame.score1,
       guestScore: backendGame.score2,
-      isCompleted: backendGame.status === 'COMPLETED',
       createdAt: new Date(backendGame.createdAt),
       updatedAt: new Date(backendGame.updatedAt)
     };
@@ -84,8 +83,7 @@ export class TournamentService {
       team1Id: game.homePlayer?.teamId,
       team2Id: game.guestPlayer?.teamId,
       score1: game.homeScore,
-      score2: game.guestScore,
-      status: game.isCompleted ? 'COMPLETED' : 'PENDING'
+      score2: game.guestScore
     };
   }
 
