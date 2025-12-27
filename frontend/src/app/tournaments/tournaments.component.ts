@@ -546,53 +546,36 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     game.isExpanded = !game.isExpanded;
   }
 
-  private async loadInitialData(): Promise<void> {
-    this.isLoading = true;
-    
-    // Only load tournaments if we're in the list view
-    if (this._currentView === 'list') {
-      await this.loadTournaments();
-    }
-    
-    // Load players and teams if needed
-    if (this._currentView === 'create') {
-      await Promise.all([
-        this.loadPlayers(),
-        this.loadTeams()
-      ]);
-    }
-  }
-
   async loadTournaments(): Promise<void> {
     this.isLoading = true;
-    return new Promise((resolve) => {
-      this.tournamentService.getAllTournaments()
-        .pipe(
-          finalize(() => {
-            this.isLoading = false;
-            this.cdr.detectChanges();
-          })
-        )
-        .subscribe({
-          next: (tournaments) => {
-            // Sort tournaments by creation date (newest first)
-            this.tournaments = (tournaments || []).sort((a, b) => 
-              new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
-            );
-            this.collectionSize = this.tournaments.length;
-            // Force change detection to update the view
-            this.cdr.markForCheck();
-            resolve();
-          },
-          error: (error) => {
-            console.error('Error loading tournaments:', error);
-            this.tournaments = [];
-            this.collectionSize = 0;
-            this.cdr.markForCheck();
-            resolve();
-          }
-        });
-    });
+    try {
+      // First get all tournaments
+      const tournaments = await this.tournamentService.getAllTournaments().toPromise() || [];
+      
+      // For each tournament, get the game count
+      const tournamentsWithCounts = await Promise.all(
+        tournaments.map(async tournament => {
+          const count = await this.tournamentService.getTournamentGameCount(tournament.id).toPromise();
+          return {
+            ...tournament,
+            gameCount: count || 0
+          };
+        })
+      );
+
+      // Sort tournaments by creation date (newest first)
+      this.tournaments = tournamentsWithCounts.sort((a, b) => 
+        new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime()
+      );
+      this.collectionSize = this.tournaments.length;
+    } catch (error) {
+      console.error('Error loading tournaments:', error);
+      this.tournaments = [];
+      this.collectionSize = 0;
+    } finally {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    }
   }
 
   viewTournament(tournamentId: string | undefined, event?: Event): void {
@@ -614,16 +597,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       this.loadPlayers(),
       this.loadTeams()
     ]);
-  }
-
-  async onBackToList(): Promise<void> {
-    await this.router.navigate(['/tournaments']);
-    this.currentView = 'list';
-    this.currentTournament = null;
-    this.tournamentForm.reset();
-    this.selectedPlayers = [];
-    this.playerSelections = [];
-    await this.loadTournaments();
   }
 
   async deleteTournament(tournamentId: string, event: Event): Promise<void> {
@@ -682,22 +655,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       console.error('Error loading teams:', error);
       this.teams = [];
     }
-  }
-
-  togglePlayerSelection(playerId: string | number | undefined): void {
-    if (playerId === undefined) return;
-    const id = playerId.toString();
-    const index = this.selectedPlayers.indexOf(id);
-    if (index === -1) {
-      this.selectedPlayers.push(id);
-    } else {
-      this.selectedPlayers.splice(index, 1);
-    }
-  }
-
-  isPlayerSelected(playerId: string | number | undefined): boolean {
-    if (playerId === undefined) return false;
-    return this.selectedPlayers.includes(playerId.toString());
   }
 
   async createTournament(): Promise<void> {
@@ -791,34 +748,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     // Handle both string and number IDs
     const team = this.teams.find(t => t.id?.toString() === teamId.toString());
     return team ? team.name : 'Unknown Team';
-  }
-
-  hasEmptyTeamSelections(): boolean {
-    return this.playerSelections.some(selection => !selection.teamId);
-  }
-
-  startNewRound(): void {
-    if (!this.currentTournament) {
-      alert('No tournament selected');
-      return;
-    }
-    
-    const settings = {
-      teamAssignment: this.tournamentForm.get('teamAssignment')?.value || 'fixed',
-      homeAwayAssignment: this.tournamentForm.get('homeAwayAssignment')?.value || 'fixed'
-    };
-
-    this.tournamentService.startNextRound(this.currentTournament.id, settings).subscribe({
-      next: (tournament) => {
-        this.currentTournament = tournament;
-        this.loadTournamentStats();
-      },
-      error: (error) => {
-        console.error('Error starting new round:', error);
-        const errorMessage = error.error?.message || 'Failed to start new round';
-        alert(`Error: ${errorMessage}`);
-      }
-    });
   }
 
   playGame(game: Game): void {

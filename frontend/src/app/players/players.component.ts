@@ -18,11 +18,6 @@ export class PlayersComponent implements OnInit {
   error: string | null = null;
   showAddForm = false;
   editingPlayer: Player | null = null;
-
-  newPlayer: Player = {
-    name: ''
-  };
-  
   currentPlayerName = '';
 
   constructor(
@@ -83,7 +78,6 @@ export class PlayersComponent implements OnInit {
           error: (err) => this.handleSaveError(err, 'add')
         });
     }
-
   }
 
   private handleSaveSuccess(): void {
@@ -105,36 +99,6 @@ export class PlayersComponent implements OnInit {
     this.showAddForm = true;
   }
 
-  updatePlayer(): void {
-    if (!this.editingPlayer) return;
-
-    this.loading = true;
-    this.error = null;
-    
-    this.playerService.updatePlayer(this.editingPlayer.id!, this.editingPlayer).subscribe({
-      next: (updatedPlayer) => {
-        try {
-          const index = this.players.findIndex(p => p.id === updatedPlayer.id);
-          if (index !== -1) {
-            this.players[index] = updatedPlayer;
-            this.players = [...this.players];
-          }
-          this.cancelEdit();
-        } catch (error) {
-          this.error = 'Error processing player update';
-        } finally {
-          this.loading = false;
-          this.cdr.markForCheck();
-        }
-      },
-      error: (err) => {
-        this.error = 'Failed to update player';
-        this.loading = false;
-        this.cdr.markForCheck();
-      }
-    });
-  }
-
   deletePlayer(id: number): void {
     if (!confirm('Are you sure you want to delete this player?')) return;
 
@@ -153,17 +117,11 @@ export class PlayersComponent implements OnInit {
           this.cdr.markForCheck();
         }
       },
-      error: (err) => {
+      error: () => {
         this.error = 'Failed to delete player';
         this.loading = false;
         this.cdr.markForCheck();
       }
     });
-  }
-
-  cancelEdit(): void {
-    this.editingPlayer = null;
-    this.showAddForm = false;
-    this.cdr.markForCheck();
   }
 }

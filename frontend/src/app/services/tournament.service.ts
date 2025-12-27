@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
+import { map, catchError, tap } from 'rxjs/operators';
 import { 
   Tournament, 
   CreateTournamentRequest, 
@@ -8,15 +9,10 @@ import {
   TournamentStats, 
   Game, 
   AddGameRequest,
-  TournamentPlayer,
-  TournamentTeam,
   PlayerSelection,
   TeamSelection
 } from '../models/tournament.model';
 import { environment } from '../../environments/environment';
-import { Player } from '../models/player.model'; 
-import { Team } from '../models/team.model';
-import {tap} from "rxjs/operators";
 
 @Injectable({
   providedIn: 'root'
@@ -62,19 +58,22 @@ export class TournamentService {
     return this.http.delete<void>(`${this.apiUrl}/${tournamentId}`);
   }
 
-  startNextRound(tournamentId: string, settings?: {
-    teamAssignment: 'fixed' | 'random';
-    homeAwayAssignment: 'fixed' | 'random';
-  }): Observable<Tournament> {
-    return this.http.post<Tournament>(`${this.apiUrl}/${tournamentId}/next-round`, settings);
-  }
-
   completeTournament(tournamentId: string): Observable<Tournament> {
     return this.http.post<Tournament>(`${this.apiUrl}/${tournamentId}/complete`, {});
   }
 
   getTournamentStats(tournamentId: string): Observable<TournamentStats> {
-    return this.http.get<TournamentStats>(`${this.apiUrl}/${tournamentId}/stats`);
+    return this.http.get<TournamentStats>(`${this.apiUrl}/tournaments/${tournamentId}/stats`);
+  }
+
+  getTournamentGameCount(tournamentId: string): Observable<number> {
+    return this.http.get<Game[]>(`${this.apiUrl}/${tournamentId}/games`).pipe(
+      map(games => games?.length || 0),
+      catchError((error: any) => {
+        console.error('Error getting games:', error);
+        return of(0); // Return 0 if there's an error
+      })
+    );
   }
 
   // Game management
@@ -97,15 +96,6 @@ export class TournamentService {
 
   deleteGame(tournamentId: string, gameId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${tournamentId}/games/${gameId}`);
-  }
-
-  // Player and team management
-  getAvailablePlayers(tournamentId: string): Observable<PlayerSelection[]> {
-    return this.http.get<PlayerSelection[]>(`${this.apiUrl}/${tournamentId}/available-players`);
-  }
-
-  getAvailableTeams(tournamentId: string): Observable<TeamSelection[]> {
-    return this.http.get<TeamSelection[]>(`${this.apiUrl}/${tournamentId}/available-teams`);
   }
 
   // Helper methods for random selection

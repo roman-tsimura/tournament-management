@@ -37,7 +37,7 @@
                             @for (tournament of tournaments | slice: (page-1) * pageSize : (page-1) * pageSize + pageSize; track tournament.id) {
                                 <tr>
                                     <td>{{ tournament.name }}</td>
-                                    <td>{{ tournament.games?.length || 0 }}</td>
+                                    <td>{{ tournament.gameCount || 0 }}</td>
                                     <td class="text-end">
                                         <div class="d-flex justify-content-end gap-1">
                                             <button type="button" (click)="viewTournament(tournament.id, $event)" class="btn btn-sm btn-outline-primary" [disabled]="isLoading">

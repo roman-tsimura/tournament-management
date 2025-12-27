@@ -100,7 +100,7 @@ export class TeamsComponent implements OnInit {
         this.loading = false;
         this.cdr.markForCheck();
       },
-      error: (err) => {
+      error: () => {
         this.error = 'Failed to create team. Please try again.';
         this.loading = false;
         this.cdr.markForCheck();
