@@ -27,22 +27,13 @@ export class TournamentService {
   }
 
   getTournament(tournamentId: string): Observable<Tournament> {
-    return this.http.get<Tournament>(`${this.apiUrl}/${tournamentId}`).pipe(
-      tap({
-        next: (response) => {
-          console.log('Raw API response for tournament:', JSON.stringify(response, null, 2));
-        },
-        error: (error) => {
-          console.error('Error fetching tournament:', error);
-        }
-      })
-    );
+    return this.http.get<Tournament>(`${this.apiUrl}/${tournamentId}`);
   }
 
   updateGameScore(gameId: string, gameData: UpdateGameScoreRequest): Observable<Tournament> {
     return this.http.put<Tournament>(`${this.apiUrl}/games/${gameId}/scores`, {
-      homeScore: gameData.homeScore,
-      guestScore: gameData.guestScore
+      score1: gameData.homeScore,
+      score2: gameData.guestScore
     });
   }
 
@@ -63,7 +54,7 @@ export class TournamentService {
   }
 
   getTournamentStats(tournamentId: string): Observable<TournamentStats> {
-    return this.http.get<TournamentStats>(`${this.apiUrl}/tournaments/${tournamentId}/stats`);
+    return this.http.get<TournamentStats>(`${this.apiUrl}/${tournamentId}/stats`);
   }
 
 

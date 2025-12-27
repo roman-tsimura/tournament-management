@@ -59,16 +59,13 @@ public class TournamentController {
         GameDTO gameDTO = gameMapper.toDTO(updatedGame);
         return ResponseEntity.ok(gameDTO);
     }
-    
+
     @GetMapping("/{id}/games")
     public ResponseEntity<List<GameDTO>> getTournamentGames(@PathVariable Long id) {
         List<Game> games = tournamentService.getTournamentGames(id);
-        if (games.isEmpty()) {
-            return ResponseEntity.notFound().build();
-        }
         List<GameDTO> gameDTOs = games.stream()
-            .map(gameMapper::toDTO)
-            .collect(Collectors.toList());
+                .map(gameMapper::toDTO)
+                .collect(Collectors.toList());
         return ResponseEntity.ok(gameDTOs);
     }
 

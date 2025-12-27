@@ -1,20 +1,24 @@
 package org.example.model;
 
-import jakarta.persistence.Embeddable;
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
 
-@Embeddable
+import lombok.Data;
+
+@Data
 public class PlayerTournamentId implements Serializable {
-    private Long playerId;
-    private Long tournamentId;
+    @Serial
+    private static final long serialVersionUID = 1L;
+    
+    private Long player;
+    private Long tournament;
 
-    public PlayerTournamentId() {
-    }
+    public PlayerTournamentId() {}
 
-    public PlayerTournamentId(Long playerId, Long tournamentId) {
-        this.playerId = playerId;
-        this.tournamentId = tournamentId;
+    public PlayerTournamentId(Long player, Long tournament) {
+        this.player = player;
+        this.tournament = tournament;
     }
 
     @Override
@@ -22,12 +26,12 @@ public class PlayerTournamentId implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         PlayerTournamentId that = (PlayerTournamentId) o;
-        return Objects.equals(playerId, that.playerId) &&
-               Objects.equals(tournamentId, that.tournamentId);
+        return Objects.equals(player, that.player) &&
+               Objects.equals(tournament, that.tournament);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(playerId, tournamentId);
+        return Objects.hash(player, tournament);
     }
 }

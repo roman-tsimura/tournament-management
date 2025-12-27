@@ -245,7 +245,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
             throw new Error('Tournament not found');
           }
 
-          console.log('Basic tournament data:', JSON.stringify(tournament, null, 2));
           this.currentTournament = tournament;
           this._currentView = 'tournament';
 
@@ -696,12 +695,9 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   async loadPlayers(): Promise<void> {
-    console.log('Loading players...');
     try {
       const players = await this.playerService.getPlayers().toPromise();
-      console.log('Players from API:', players);
       this.players = players || [];
-      console.log('Assigned players:', this.players);
       this.cdr.detectChanges();
     } catch (error) {
       console.error('Error loading players:', error);
@@ -710,12 +706,9 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   async loadTeams(): Promise<void> {
-    console.log('Loading teams...');
     try {
       const teams = await this.teamService.getTeams().toPromise();
-      console.log('Teams from API:', teams);
       this.teams = teams || [];
-      console.log('Assigned teams:', this.teams);
     } catch (error) {
       console.error('Error loading teams:', error);
       this.teams = [];
