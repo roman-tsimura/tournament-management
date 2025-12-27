@@ -1,0 +1,130 @@
+<div class="card mb-4">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="mb-0">Add New Game</h5>
+    <div *ngIf="isLoading" class="spinner-border spinner-border-sm text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+  </div>
+  <div class="card-body">
+    <form [formGroup]="gameForm" (ngSubmit)="onSubmit()">
+      <div class="row g-3">
+        <!-- Home Player -->
+        <div class="col-md-5">
+          <div class="card h-100">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">Home Team</h6>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label for="homePlayer" class="form-label">Player</label>
+                <div class="input-group">
+                  <select class="form-select" id="homePlayer" formControlName="homePlayerId" [compareWith]="comparePlayers" [disabled]="isLoading">
+                    <option [ngValue]="null" disabled>Select a player</option>
+                    <ng-container *ngIf="!isLoading">
+                      <option *ngFor="let player of availablePlayers" [ngValue]="player">
+                        {{ player.name }}
+                      </option>
+                    </ng-container>
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" 
+                          (click)="$event.stopPropagation(); onRandomizePlayer('home')" 
+                          title="Randomize Player">
+                    <i class="bi bi-person-shuffle"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="homeTeam" class="form-label">Team</label>
+                <div class="input-group">
+                  <select class="form-select" id="homeTeam" formControlName="homeTeamId" [compareWith]="compareTeams" [disabled]="isLoading || !gameForm.get('homePlayerId')?.value || homePlayerTeams.length === 0">
+                    <option [ngValue]="null" disabled>
+                      {{ homePlayerTeams.length === 0 ? 'No teams available' : 'Select a team' }}
+                    </option>
+                    <option *ngFor="let team of homePlayerTeams" [ngValue]="team">
+                      {{ team.name }}
+                    </option>
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" 
+                          [disabled]="!gameForm.get('homePlayer')?.value"
+                          (click)="$event.stopPropagation(); onRandomizeTeam('home')" 
+                          title="Randomize Team">
+                    <i class="bi bi-shuffle"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- VS Badge -->
+        <div class="col-md-2 d-flex align-items-center justify-content-center">
+          <span class="badge bg-secondary fs-5">VS</span>
+        </div>
+
+        <!-- Away Player -->
+        <div class="col-md-5">
+          <div class="card h-100">
+            <div class="card-header bg-light">
+              <h6 class="mb-0">Away Team</h6>
+            </div>
+            <div class="card-body">
+              <div class="mb-3">
+                <label for="guestPlayer" class="form-label">Player</label>
+                <div class="input-group">
+                  <select class="form-select" id="guestPlayer" formControlName="guestPlayerId" [compareWith]="comparePlayers" [disabled]="isLoading">
+                    <option [ngValue]="null" disabled>Select a player</option>
+                    <ng-container *ngIf="!isLoading">
+                      <option *ngFor="let player of availablePlayers" [ngValue]="player">
+                        {{ player.name }}
+                      </option>
+                    </ng-container>
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" 
+                          (click)="$event.stopPropagation(); onRandomizePlayer('away')" 
+                          title="Randomize Player">
+                    <i class="bi bi-person-shuffle"></i>
+                  </button>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label for="guestTeam" class="form-label">Team</label>
+                <div class="input-group">
+                  <select class="form-select" id="guestTeam" formControlName="guestTeamId" [compareWith]="compareTeams" [disabled]="isLoading || !gameForm.get('guestPlayerId')?.value || awayPlayerTeams.length === 0">
+                    <option [ngValue]="null" disabled>
+                      {{ awayPlayerTeams.length === 0 ? 'No teams available' : 'Select a team' }}
+                    </option>
+                    <option *ngFor="let team of awayPlayerTeams" [ngValue]="team">
+                      {{ team.name }}
+                    </option>
+                  </select>
+                  <button type="button" class="btn btn-outline-secondary" 
+                          [disabled]="!gameForm.get('guestPlayerId')?.value"
+                          (click)="$event.stopPropagation(); onRandomizeTeam('away')" 
+                          title="Randomize Team">
+                    <i class="bi bi-shuffle"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+            <button type="button" class="btn btn-outline-secondary me-md-2" 
+                    (click)="onRandomizePlayer('home'); onRandomizePlayer('away')"
+                    [disabled]="isSubmitting">
+              Randomize All
+            </button>
+            <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isSubmitting">
+              <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+              {{ isSubmitting ? 'Adding...' : 'Add Game' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>

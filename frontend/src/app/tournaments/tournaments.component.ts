@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild } from '@angular/core';
 import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
@@ -8,29 +8,20 @@ import {
   Tournament,
   TournamentStats,
   Game,
-  GameFormModel,
-  PlayerSelection,
-  TeamSelection,
-  TournamentPlayer,
-  TournamentTeam,
-  AddGameRequest,
-  UpdateGameScoreRequest, TournamentSettings
+  TournamentSettings
 } from '../models/tournament.model';
 import { TournamentService } from '../services/tournament.service';
 import { Player } from '../models/player.model';
+import { AddGameComponent } from '../game/add-game/add-game.component';
 import { Team } from '../models/team.model';
 import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
-import { NgbPaginationModule, NgbModal, NgbModalRef, NgbDropdownModule, NgbNavModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
+import { NgbPaginationModule, NgbModal, NgbModalRef, NgbDropdownModule, NgbNavModule } from '@ng-bootstrap/ng-bootstrap';
 import { DatePipe } from '@angular/common';
-import { filter, switchMap, tap, catchError, finalize } from 'rxjs/operators';
-import { Subscription, of } from 'rxjs';
+import { filter, tap, catchError, finalize } from 'rxjs/operators';
+import { Subscription, of, forkJoin } from 'rxjs';
 
-type TournamentView = 'list' | 'create' | 'tournament' | 'game' | 'teams';
-
-export interface GameWithSelection extends Game {
-  isExpanded?: boolean;
-}
+type TournamentView = 'list' | 'create' | 'tournament' | 'teams' | 'game';
 
 @Component({
   selector: 'app-tournaments',
@@ -38,13 +29,13 @@ export interface GameWithSelection extends Game {
   providers: [DatePipe],
   imports: [
     CommonModule,
+    AddGameComponent,
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
     RouterLink,
     NgbDropdownModule,
     NgbNavModule,
-    NgbTypeaheadModule,
     NgbPaginationModule,
     DatePipe
   ],
@@ -58,16 +49,23 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   
   // Form groups
   tournamentForm: FormGroup;
-  gameForm: FormGroup;
-  
+
+  /**
+   * Handles the game added event from the add-game component
+   * @param game The newly added game
+   */
+  onGameAdded(game: Game) {
+    // Add the new game to the beginning of the games array
+    this.games.unshift(game);
+    
+    // If needed, you can also refresh the games list from the server
+    // this.loadGames();
+  }
+
   // Data collections
+  games: Array<Game & { isExpanded?: boolean }> = [];
   tournaments: Tournament[] = [];
   currentTournament: Tournament | null = null;
-  games: GameWithSelection[] = [];
-  availablePlayers: PlayerSelection[] = [];
-  availableTeams: TeamSelection[] = [];
-  filteredHomeTeams: TeamSelection[] = [];
-  filteredGuestTeams: TeamSelection[] = [];
   players: Player[] = [];
   teams: Team[] = [];
   selectedPlayers: string[] = [];
@@ -81,14 +79,24 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   // UI state
   isLoading = false;
   isSubmitting = false;
-  selectedPlayerTeams: { [key: string]: TeamSelection[] } = {};
   currentGame: Game | null = null;
-  currentRound = 1;
   stats: TournamentStats | null = null;
   
   // Form groups
   scoreForm: FormGroup;
   
+  toggleGameExpand(game: Game & { isExpanded?: boolean }): void {
+    game.isExpanded = !game.isExpanded;
+    // Close other expanded games if needed
+    if (game.isExpanded) {
+      this.games.forEach(g => {
+        if (g !== game && g.isExpanded) {
+          g.isExpanded = false;
+        }
+      });
+    }
+  }
+
   // View management
   get currentView(): TournamentView {
     return this._currentView;
@@ -98,18 +106,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     this._currentView = value;
   }
   
-  // Form getters
-  get gamePlayers() {
-    return this.gameForm.get('players') as FormArray;
-  }
-  
-  get homePlayerId() {
-    return this.gameForm.get('homePlayerId');
-  }
-  
-  get guestPlayerId() {
-    return this.gameForm.get('guestPlayerId');
-  }
 
   constructor(
     private fb: FormBuilder,
@@ -119,27 +115,10 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     private router: Router,
     private route: ActivatedRoute,
     private cdr: ChangeDetectorRef,
-    private datePipe: DatePipe,
     private modalService: NgbModal
   ) {
     this.tournamentForm = this.fb.group({
       name: ['', [Validators.required, Validators.minLength(3)]]
-    });
-    
-    this.gameForm = this.fb.group({
-      homePlayerId: ['', Validators.required],
-      homeTeamId: ['', Validators.required],
-      guestPlayerId: ['', [Validators.required, this.differentPlayerValidator('homePlayerId')]],
-      guestTeamId: ['', [Validators.required, this.differentTeamValidator('homeTeamId')]]
-    });
-    
-    // Update available teams when player selection changes
-    this.gameForm.get('homePlayerId')?.valueChanges.subscribe(playerId => {
-      this.onPlayerSelected(playerId, 'home');
-    });
-    
-    this.gameForm.get('guestPlayerId')?.valueChanges.subscribe(playerId => {
-      this.onPlayerSelected(playerId, 'guest');
     });
     
     // Initialize score form
@@ -149,31 +128,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     });
   }
   
-  // Custom validator to ensure home and guest players are different
-  private differentPlayerValidator(otherField: string) {
-    return (control: FormControl) => {
-      if (!control.parent) {
-        return null;
-      }
-      const otherValue = control.parent.get(otherField)?.value;
-      return otherValue && control.value === otherValue 
-        ? { samePlayer: true } 
-        : null;
-    };
-  }
-
-  // Custom validator to ensure home and guest teams are different
-  private differentTeamValidator(otherField: string) {
-    return (control: FormControl) => {
-      if (!control.parent) {
-        return null;
-      }
-      const otherValue = control.parent.get(otherField)?.value;
-      return otherValue && control.value === otherValue 
-        ? { sameTeam: true } 
-        : null;
-    };
-  }
 
   ngOnInit(): void {
     this.routerSubscription = this.router.events.pipe(
@@ -231,255 +185,12 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     }
   }
 
-  loadTournament(): void {
-    // Get the ID from the route if not already set
-    const idFromRoute = this.route.snapshot.firstChild?.paramMap.get('id');
-    this.tournamentId = this.tournamentId !== null ? this.tournamentId : (idFromRoute || null);
-    
-    if (!this.tournamentId) {
-      console.error('No tournament ID provided');
-      this.router.navigate(['/tournaments']);
-      return;
-    }
-
-    this.isLoading = true;
-    this.cdr.detectChanges(); // Update the view to show loading state
-
-    // Reset the game form when loading a tournament
-    this.initNewGame();
-
-    this.tournamentService.getTournament(this.tournamentId)
-      .pipe(
-        tap({
-          next: (tournament) => {
-            if (!tournament) {
-              throw new Error('Tournament not found');
-            }
-            this.currentTournament = tournament;
-            this.games = tournament.games?.map(g => ({ ...g, isExpanded: false })) || [];
-            this._currentView = 'tournament';
-          },
-          error: (error) => {
-            console.error('Error loading tournament:', error);
-            this.router.navigate(['/tournaments']);
-          }
-        }),
-        // Load all players using PlayerService
-        switchMap(() => this.playerService.getPlayers()),
-        tap({
-          next: (players) => {
-            // Map Player[] to PlayerSelection[] to match the expected type
-            this.availablePlayers = (players || []).map(player => ({
-              id: player.id?.toString() || '',
-              name: `${player.name}`.trim()
-            }));
-            console.log('Players loaded:', this.availablePlayers);
-          },
-          error: (error) => {
-            console.error('Error loading players:', error);
-            // Continue even if players fail to load
-          }
-        }),
-        // Load available teams for the tournament
-        switchMap(() => this.teamService.getTeams()),
-        tap({
-          next: (teams) => {
-            this.availableTeams = (teams || []).map(team => ({
-              id: team.id?.toString() || '',
-              name: team.name
-            }));
-            this.filteredHomeTeams = [...this.availableTeams];
-            this.filteredGuestTeams = [...this.availableTeams];
-            console.log('Teams loaded:', this.availableTeams);
-          },
-          error: (error) => {
-            console.error('Error loading teams:', error);
-            // Continue even if teams fail to load
-          }
-        }),
-        catchError((error) => {
-          console.error('Error in tournament data stream:', error);
-          this.router.navigate(['/tournaments']);
-          return of(null);
-        }),
-        finalize(() => {
-          this.isLoading = false;
-          this.cdr.detectChanges();
-        })
-      )
-      .subscribe();
+  private handleTournamentLoadError(error: any): void {
+    console.error('Error loading tournament data:', error);
+    this.router.navigate(['/tournaments']);
   }
 
-  initNewGame(): void {
-    this.gameForm.reset({
-      homePlayerId: '',
-      homeTeamId: '',
-      guestPlayerId: '',
-      guestTeamId: ''
-    });
-    this.filteredHomeTeams = [...this.availableTeams];
-    this.filteredGuestTeams = [...this.availableTeams];
-  }
-
-  onPlayerSelected(playerId: string, playerType: 'home' | 'guest'): void {
-    if (!playerId) {
-      if (playerType === 'home') {
-        this.filteredHomeTeams = this.availableTeams;
-      } else {
-        this.filteredGuestTeams = this.availableTeams;
-      }
-      return;
-    }
-
-    // Since we don't have a direct player-teams relationship,
-    // we'll use all available teams in the tournament
-    const teams = this.availableTeams;
-
-    if (playerType === 'home') {
-      this.filteredHomeTeams = teams;
-      // Auto-select the first team if only one is available
-      if (teams.length === 1) {
-        this.gameForm.patchValue({ homeTeamId: teams[0].id });
-      }
-    } else {
-      this.filteredGuestTeams = teams;
-      // Auto-select the first team if only one is available
-      if (teams.length === 1) {
-        this.gameForm.patchValue({ guestTeamId: teams[0].id });
-      }
-    }
-  }
-  
-  onRandomizePlayer(playerType: 'home' | 'guest'): void {
-    // Get the other player's ID (if any)
-    const otherPlayerControl = playerType === 'home' ? 'guestPlayerId' : 'homePlayerId';
-    const otherPlayerId = this.gameForm.get(otherPlayerControl)?.value;
-    
-    // Filter out the other selected player (if any) from available players
-    const availablePlayers = this.availablePlayers.filter(
-      player => !otherPlayerId || player.id !== otherPlayerId
-    );
-    
-    if (availablePlayers.length === 0) {
-      console.warn('No available players to select');
-      return;
-    }
-    
-    const randomPlayer = this.tournamentService.getRandomPlayer(availablePlayers);
-    if (randomPlayer) {
-      const controlName = `${playerType}PlayerId`;
-      this.gameForm.get(controlName)?.setValue(randomPlayer.id);
-      // The valueChanges subscription will handle team loading
-    }
-  }
-  
-  onRandomizeTeam(playerType: 'home' | 'guest'): void {
-    // Get the other team's ID (if any)
-    const otherTeamControl = playerType === 'home' ? 'guestTeamId' : 'homeTeamId';
-    const otherTeamId = this.gameForm.get(otherTeamControl)?.value;
-    
-    // Get the appropriate teams list based on player type
-    let availableTeams = playerType === 'home' ? 
-      [...this.filteredHomeTeams] : 
-      [...this.filteredGuestTeams];
-    
-    // Filter out the other selected team (if any)
-    availableTeams = availableTeams.filter(
-      team => !otherTeamId || team.id !== otherTeamId
-    );
-    
-    if (availableTeams.length === 0) {
-      console.warn(`No available teams to select for ${playerType} team`);
-      return;
-    }
-    
-    const randomTeam = this.tournamentService.getRandomTeam(availableTeams);
-    if (randomTeam) {
-      const controlName = `${playerType}TeamId`;
-      this.gameForm.get(controlName)?.setValue(randomTeam.id);
-    }
-  }
-
-  addGame(): void {
-    if (this.gameForm.invalid || !this.tournamentId) {
-      return;
-    }
-
-    this.isSubmitting = true;
-    const formValue = this.gameForm.value;
-
-    // Make sure we have valid team selections
-    if (!formValue.homeTeamId || !formValue.guestTeamId) {
-      alert('Please select teams for both players');
-      this.isSubmitting = false;
-      return;
-    }
-
-    // Get player and team names
-    const homePlayer = this.availablePlayers.find(p => p.id === formValue.homePlayerId);
-    const guestPlayer = this.availablePlayers.find(p => p.id === formValue.guestPlayerId);
-    const homeTeam = this.availableTeams.find(t => t.id === formValue.homeTeamId);
-    const guestTeam = this.availableTeams.find(t => t.id === formValue.guestTeamId);
-
-    if (!homePlayer || !guestPlayer || !homeTeam || !guestTeam) {
-      alert('Invalid player or team selection');
-      this.isSubmitting = false;
-      return;
-    }
-
-    const gameData: AddGameRequest = {
-      tournamentId: this.tournamentId,
-      homePlayerId: formValue.homePlayerId,
-      homeTeamId: formValue.homeTeamId,
-      guestPlayerId: formValue.guestPlayerId,
-      guestTeamId: formValue.guestTeamId
-    };
-
-    this.tournamentService.addGame(this.tournamentId, gameData)
-        .pipe(
-            finalize(() => this.isSubmitting = false)
-        )
-        .subscribe({
-          next: (game) => {
-            // Create a new game object with all necessary properties
-            const newGame: GameWithSelection = {
-              ...game,
-              isExpanded: false,
-              homePlayer: {
-                playerId: game.homePlayer?.playerId || formValue.homePlayerId,
-                playerName: homePlayer?.name || '',
-                teamId: game.homePlayer?.teamId || formValue.homeTeamId,
-                teamName: homeTeam?.name || '',
-                isHome: true
-              },
-              guestPlayer: {
-                playerId: game.guestPlayer?.playerId || formValue.guestPlayerId,
-                playerName: guestPlayer?.name || '',
-                teamId: game.guestPlayer?.teamId || formValue.guestTeamId,
-                teamName: guestTeam?.name || '',
-                isHome: false
-              }
-            };
-            
-            // Add the new game to the beginning of the games array
-            this.games.unshift(newGame);
-            
-            // Reset the form and filtered teams
-            this.gameForm.reset();
-            this.filteredHomeTeams = [...this.availableTeams];
-            this.filteredGuestTeams = [...this.availableTeams];
-            
-            // Force change detection
-            this.cdr.detectChanges();
-          },
-          error: (error) => {
-            console.error('Error adding game:', error);
-            alert('Failed to add game: ' + (error.error?.message || error.message || 'Unknown error'));
-          }
-        });
-  }
-  
-  updateGameScore(game: GameWithSelection, homeScore: string, guestScore: string): void {
+  public updateGameScore(game: Game, homeScore: string, guestScore: string): void {
     if (!game.id) return;
     
     const homeScoreNum = parseInt(homeScore, 10);
@@ -505,13 +216,53 @@ export class TournamentsComponent implements OnInit, OnDestroy {
           };
           this.cdr.detectChanges();
         }
-        // In a real app, show a success message
       },
       error: (error) => {
         console.error('Error updating game score:', error);
         alert('Failed to update game score: ' + (error.error?.message || error.message || 'Unknown error'));
       }
     });
+  }
+
+  loadTournamentData(): void {
+    this.isLoading = true;
+    this.cdr.detectChanges();
+
+    // Load the tournament data
+    this.tournamentService.getTournament(this.tournamentId!)
+      .pipe(
+        tap({
+          next: tournament => {
+            if (!tournament) throw new Error('Tournament not found');
+            this.currentTournament = tournament;
+            this.games = tournament.games?.map(g => ({ ...g, isExpanded: false })) || [];
+            this._currentView = 'tournament';
+          },
+          error: error => this.handleTournamentLoadError(error)
+        }),
+        catchError(error => {
+          this.handleTournamentLoadError(error);
+          return of(null);
+        }),
+        finalize(() => {
+          this.isLoading = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe();
+  }
+
+  loadTournament(): void {
+    const idFromRoute = this.route.snapshot.firstChild?.paramMap.get('id') ?? null;
+    this.tournamentId = this.tournamentId ?? idFromRoute;
+    
+    if (!this.tournamentId) {
+      console.error('No tournament ID provided');
+      this.router.navigate(['/tournaments']);
+      return;
+    }
+
+    this.loadTournamentData();
   }
   
   deleteGame(gameId: string): void {
@@ -540,10 +291,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       },
       () => {}
     );
-  }
-  
-  toggleGameExpand(game: GameWithSelection): void {
-    game.isExpanded = !game.isExpanded;
   }
 
   private async loadInitialData(): Promise<void> {
@@ -614,16 +361,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       this.loadPlayers(),
       this.loadTeams()
     ]);
-  }
-
-  async onBackToList(): Promise<void> {
-    await this.router.navigate(['/tournaments']);
-    this.currentView = 'list';
-    this.currentTournament = null;
-    this.tournamentForm.reset();
-    this.selectedPlayers = [];
-    this.playerSelections = [];
-    await this.loadTournaments();
   }
 
   async deleteTournament(tournamentId: string, event: Event): Promise<void> {

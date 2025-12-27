@@ -62,6 +62,10 @@ export interface AddGameRequest {
   homeTeamId: string;
   guestPlayerId: string;
   guestTeamId: string;
+  homeScore: number;
+  guestScore: number;
+  status: string;
+  playerIds?: string[];
 }
 
 export interface UpdateGameScoreRequest {
