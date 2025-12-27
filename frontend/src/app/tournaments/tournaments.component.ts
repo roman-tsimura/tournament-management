@@ -36,7 +36,6 @@ export interface GameWithSelection extends Game {
     FormsModule,
     ReactiveFormsModule,
     RouterModule,
-    RouterLink,
     NgbDropdownModule,
     NgbNavModule,
     NgbTypeaheadModule,
@@ -66,6 +65,8 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   filteredGuestTeams: Team[] = [];
   selectedPlayers: string[] = [];
   playerSelections: Array<{playerId: string; teamId: string; isHome: boolean}> = [];
+  tournamentStats: TournamentStats | null = null;
+  statsLoading = false;
   
   // Pagination
   page = 1;
@@ -76,7 +77,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   isLoading = false;
   isSubmitting = false;
   isUpdatingScore = false;
-  stats: TournamentStats | null = null;
+  showAddGameForm = false;
   
   // Form groups
   scoreForm: FormGroup;
@@ -88,6 +89,16 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   
   set currentView(value: TournamentView) {
     this._currentView = value;
+  }
+
+  backToList(): void {
+    this.currentView = 'list';
+    this.showAddGameForm = false;
+    this.router.navigate(['/tournaments']);
+  }
+
+  toggleAddGameForm(): void {
+    this.showAddGameForm = !this.showAddGameForm;
   }
 
   ngOnDestroy() {
@@ -227,16 +238,26 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       }
 
       this.isLoading = true;
+      this.statsLoading = true;
       this.cdr.detectChanges(); // Update the view to show loading state
 
       // First, get the basic tournament data
-      const tournament = await this.tournamentService.getTournament(this.tournamentId).toPromise();
+      const [tournament, stats] = await forkJoin([
+        this.tournamentService.getTournament(this.tournamentId).toPromise(),
+        this.tournamentService.getTournamentStats(this.tournamentId).pipe(
+          catchError(error => {
+            console.error('Error loading tournament stats:', error);
+            return of(null);
+          })
+        )
+      ]).toPromise() || [null, null];
       
       if (!tournament) {
         throw new Error('Tournament not found');
       }
 
       this.currentTournament = tournament;
+      this.tournamentStats = stats;
       this._currentView = 'tournament';
 
       // Load games, players, and teams in parallel with proper error handling
@@ -287,6 +308,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       await this.router.navigate(['/tournaments']);
     } finally {
       this.isLoading = false;
+      this.statsLoading = false;
       this.cdr.detectChanges();
     }
   }
@@ -720,7 +742,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     if (!this.currentTournament) return;
 
     try {
-      this.stats = await this.tournamentService.getTournamentStats(this.currentTournament.id).toPromise() || null;
+      this.tournamentStats = await this.tournamentService.getTournamentStats(this.currentTournament.id).toPromise() || null;
     } catch (error) {
       // Silently handle error
     }
