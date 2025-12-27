@@ -23,8 +23,8 @@ import { PlayerService } from '../services/player.service';
 import { TeamService } from '../services/team.service';
 import { NgbPaginationModule, NgbModal, NgbModalRef, NgbDropdownModule, NgbNavModule, NgbTypeaheadModule } from '@ng-bootstrap/ng-bootstrap';
 import { DatePipe } from '@angular/common';
-import { filter, switchMap, tap, catchError, finalize } from 'rxjs/operators';
-import { Subscription, of } from 'rxjs';
+import {filter, switchMap, tap, catchError, finalize, map} from 'rxjs/operators';
+import {Subscription, of, forkJoin} from 'rxjs';
 
 type TournamentView = 'list' | 'create' | 'tournament' | 'game' | 'teams';
 
@@ -235,7 +235,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     // Get the ID from the route if not already set
     const idFromRoute = this.route.snapshot.firstChild?.paramMap.get('id');
     this.tournamentId = this.tournamentId !== null ? this.tournamentId : (idFromRoute || null);
-    
+
     if (!this.tournamentId) {
       console.error('No tournament ID provided');
       this.router.navigate(['/tournaments']);
@@ -248,57 +248,78 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     // Reset the game form when loading a tournament
     this.initNewGame();
 
-    this.tournamentService.getTournament(this.tournamentId)
-      .pipe(
-        tap({
-          next: (tournament) => {
-            if (!tournament) {
-              throw new Error('Tournament not found');
-            }
-            this.currentTournament = tournament;
-            this.games = tournament.games?.map(g => ({ ...g, isExpanded: false })) || [];
-            this._currentView = 'tournament';
-          },
-          error: (error) => {
-            console.error('Error loading tournament:', error);
-            this.router.navigate(['/tournaments']);
+    // First, get the basic tournament data
+    this.tournamentService.getTournament(this.tournamentId).pipe(
+        switchMap(tournament => {
+          if (!tournament) {
+            throw new Error('Tournament not found');
           }
+
+          console.log('Basic tournament data:', JSON.stringify(tournament, null, 2));
+          this.currentTournament = tournament;
+          this._currentView = 'tournament';
+
+          // Load games, players, and teams in parallel
+          return forkJoin([
+            this.tournamentService.getTournamentGames(tournament.id).pipe(
+              catchError(error => {
+                console.error('Error loading games:', error);
+                return of([]);
+              })
+            ),
+            this.playerService.getPlayers().pipe(
+              catchError(error => {
+                console.error('Error loading players:', error);
+                return of([]);
+              })
+            ),
+            this.teamService.getTeams().pipe(
+              catchError(error => {
+                console.error('Error loading teams:', error);
+                return of([]);
+              })
+            )
+          ]).pipe(
+            map(([games, players, teams]) => ({
+              tournament,
+              games,
+              players,
+              teams
+            }))
+          );
         }),
-        // Load all players using PlayerService
-        switchMap(() => this.playerService.getPlayers()),
-        tap({
-          next: (players) => {
-            // Map Player[] to PlayerSelection[] to match the expected type
-            this.availablePlayers = (players || []).map(player => ({
-              id: player.id?.toString() || '',
-              name: `${player.name}`.trim()
-            }));
-            console.log('Players loaded:', this.availablePlayers);
-          },
-          error: (error) => {
-            console.error('Error loading players:', error);
-            // Continue even if players fail to load
+        tap(({ games, players, teams }) => {
+          // Update tournament with games and count
+          if (this.currentTournament) {
+            this.currentTournament.games = games || [];
+            this.currentTournament.gameCount = games?.length || 0;
           }
-        }),
-        // Load available teams for the tournament
-        switchMap(() => this.teamService.getTeams()),
-        tap({
-          next: (teams) => {
-            this.availableTeams = (teams || []).map(team => ({
-              id: team.id?.toString() || '',
-              name: team.name
-            }));
-            this.filteredHomeTeams = [...this.availableTeams];
-            this.filteredGuestTeams = [...this.availableTeams];
-            console.log('Teams loaded:', this.availableTeams);
-          },
-          error: (error) => {
-            console.error('Error loading teams:', error);
-            // Continue even if teams fail to load
-          }
+
+          // Update games array for the component
+          this.games = (games || []).map(g => ({ ...g, isExpanded: false }));
+
+          // Update available players
+          this.availablePlayers = (players || []).map(player => ({
+            id: player.id?.toString() || '',
+            name: `${player.name}`.trim()
+          }));
+
+          // Update available teams
+          this.availableTeams = (teams || []).map(team => ({
+            id: team.id?.toString() || '',
+            name: team.name
+          }));
+          this.filteredHomeTeams = [...this.availableTeams];
+          this.filteredGuestTeams = [...this.availableTeams];
+
+          console.log('Updated tournament with all data:', {
+            gamesCount: games?.length,
+            availablePlayers: this.availablePlayers,
+            availableTeams: this.availableTeams
+          });
         }),
         catchError((error) => {
-          console.error('Error in tournament data stream:', error);
+          console.error('Error loading tournament data:', error);
           this.router.navigate(['/tournaments']);
           return of(null);
         }),
@@ -306,8 +327,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
           this.isLoading = false;
           this.cdr.detectChanges();
         })
-      )
-      .subscribe();
+    ).subscribe();
   }
 
   initNewGame(): void {
@@ -552,13 +572,18 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       // First get all tournaments
       const tournaments = await this.tournamentService.getAllTournaments().toPromise() || [];
       
-      // For each tournament, get the game count
+      // For each tournament, get the games and calculate count
       const tournamentsWithCounts = await Promise.all(
         tournaments.map(async tournament => {
-          const count = await this.tournamentService.getTournamentGameCount(tournament.id).toPromise();
+          const games = await this.tournamentService.getTournamentGames(tournament.id).pipe(
+            catchError(error => {
+              console.error(`Error loading games for tournament ${tournament.id}:`, error);
+              return of([]);
+            })
+          ).toPromise();
           return {
             ...tournament,
-            gameCount: count || 0
+            gameCount: games?.length || 0
           };
         })
       );

@@ -66,15 +66,6 @@ export class TournamentService {
     return this.http.get<TournamentStats>(`${this.apiUrl}/tournaments/${tournamentId}/stats`);
   }
 
-  getTournamentGameCount(tournamentId: string): Observable<number> {
-    return this.http.get<Game[]>(`${this.apiUrl}/${tournamentId}/games`).pipe(
-      map(games => games?.length || 0),
-      catchError((error: any) => {
-        console.error('Error getting games:', error);
-        return of(0); // Return 0 if there's an error
-      })
-    );
-  }
 
   // Game management
   addGame(tournamentId: string, gameData: AddGameRequest): Observable<Game> {
