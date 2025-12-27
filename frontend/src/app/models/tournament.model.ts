@@ -76,21 +76,3 @@ export interface TournamentStats {
   completedGames: number;
   leaderboard: TournamentPlayer[];
 }
-
-// For form models
-export interface GameFormModel {
-  homePlayerId: string;
-  homeTeamId: string;
-  guestPlayerId: string;
-  guestTeamId: string;
-}
-
-export interface PlayerSelection {
-  id: string;
-  name: string;
-}
-
-export interface TeamSelection {
-  id: string;
-  name: string;
-}

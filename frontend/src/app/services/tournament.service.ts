@@ -1,18 +1,18 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, of } from 'rxjs';
-import { map, catchError, tap } from 'rxjs/operators';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { 
   Tournament, 
   CreateTournamentRequest, 
   UpdateGameScoreRequest, 
   TournamentStats, 
   Game, 
-  AddGameRequest,
-  PlayerSelection,
-  TeamSelection
+  AddGameRequest
 } from '../models/tournament.model';
 import { environment } from '../../environments/environment';
+import { Player } from '../models/player.model';
+import { Team } from '../models/team.model';
 
 @Injectable({
   providedIn: 'root'
@@ -45,7 +45,6 @@ export class TournamentService {
    * Transforms a backend game object to the frontend Game interface
    */
   private mapToGame(backendGame: any): Game {
-    // Get player and team IDs
     const player1Id = backendGame.player1Id?.toString() || '';
     const player2Id = backendGame.player2Id?.toString() || '';
     const team1Id = backendGame.team1Id?.toString() || '';
@@ -118,7 +117,6 @@ export class TournamentService {
       team1Id: gameData.homeTeamId,
       team2Id: gameData.guestTeamId,
       tournamentId: tournamentId,
-      isTeam1Home: true // Assuming home team is team1
     };
     
     return this.http.post<any>(`${this.apiUrl}/${tournamentId}/games`, backendRequest).pipe(
@@ -139,14 +137,13 @@ export class TournamentService {
     return this.http.delete<void>(`${this.apiUrl}/${tournamentId}/games/${gameId}`);
   }
 
-  // Helper methods for random selection
-  getRandomPlayer(players: PlayerSelection[]): PlayerSelection | null {
+  getRandomPlayer(players: Player[]): Player | null {
     if (!players.length) return null;
     const randomIndex = Math.floor(Math.random() * players.length);
     return players[randomIndex];
   }
 
-  getRandomTeam(teams: TeamSelection[]): TeamSelection | null {
+  getRandomTeam(teams: Team[]): Team | null {
     if (!teams.length) return null;
     const randomIndex = Math.floor(Math.random() * teams.length);
     return teams[randomIndex];

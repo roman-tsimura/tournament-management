@@ -155,7 +155,7 @@
                                                 <select class="form-select" formControlName="homePlayerId"
                                                         [ngClass]="{'is-invalid': gameForm.get('homePlayerId')?.invalid && gameForm.get('homePlayerId')?.touched}">
                                                     <option value="">Select player</option>
-                                                    @for (player of availablePlayers; track player.id) {
+                                                    @for (player of players; track player.id) {
                                                         <option [value]="player.id">{{ player.name }}</option>
                                                     }
                                                 </select>
@@ -217,7 +217,7 @@
                                                 <select class="form-select" formControlName="guestPlayerId"
                                                         [ngClass]="{'is-invalid': gameForm.get('guestPlayerId')?.invalid && gameForm.get('guestPlayerId')?.touched}">
                                                     <option value="">Select player</option>
-                                                    @for (player of availablePlayers; track player.id) {
+                                                    @for (player of players; track player.id) {
                                                         <option [value]="player.id" [disabled]="player.id === gameForm.get('homePlayerId')?.value">
                                                             {{ player.name }}
                                                         </option>
