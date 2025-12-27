@@ -175,13 +175,11 @@
                                                     <td>{{ i + 1 }}</td>
                                                     <td>
                                                         <strong>{{ player.name }}</strong>
-                                                        @if (i < 3 && tournamentStats.leaderboard.length > 3) {
-                                                            <span class="ms-2">
-                                                                @if (i === 0) { 🥇 }
-                                                                @if (i === 1) { 🥈 }
-                                                                @if (i === 2) { 🥉 }
-                                                            </span>
-                                                        }
+                                                        <span class="ms-2">
+                                                            @if (i === 0) { 🥇 }
+                                                            @if (i === 1) { 🥈 }
+                                                            @if (i === 2) { 🥉 }
+                                                        </span>
                                                     </td>
                                                     <td class="text-center">{{ player.gamesPlayed }}</td>
                                                     <td class="text-center">{{ player.wins }}</td>
@@ -189,9 +187,6 @@
                                                     <td class="text-center">{{ player.losses }}</td>
                                                     <td class="text-center">
                                                         {{ player.goalsScored }}:{{ player.goalsConceded }}
-                                                        <span class="text-muted small">
-                                                            ({{ player.goalsConceded > 0 ? (player.goalsScored / player.goalsConceded).toFixed(2) : '∞' }})
-                                                        </span>
                                                     </td>
                                                     <td class="text-center fw-bold">{{ player.totalPoints }}</td>
                                                 </tr>

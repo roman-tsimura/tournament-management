@@ -101,8 +101,41 @@ export class TournamentService {
     return this.http.post<Tournament>(`${this.apiUrl}/${tournamentId}/complete`, {});
   }
 
+  private mapToTournamentStats(backendStats: any): TournamentStats {
+    const leaderboard = backendStats.playerStats
+      .map((playerStat: any) => ({
+        id: playerStat.playerId.toString(),
+        name: playerStat.playerName,
+        totalPoints: playerStat.points,
+        gamesPlayed: playerStat.gamesPlayed,
+        wins: playerStat.wins,
+        draws: playerStat.draws,
+        losses: playerStat.losses,
+        goalsScored: playerStat.goalsFor,
+        goalsConceded: playerStat.goalsAgainst
+      }))
+      .sort((a: { totalPoints: number; goalsScored: number; goalsConceded: number }, b: { totalPoints: number; goalsScored: number; goalsConceded: number }) => {
+        // First sort by total points (descending)
+        if (b.totalPoints !== a.totalPoints) {
+          return b.totalPoints - a.totalPoints;
+        }
+        // If points are equal, sort by goal difference (goalsScored - goalsConceded) descending
+        const diffA = a.goalsScored - a.goalsConceded;
+        const diffB = b.goalsScored - b.goalsConceded;
+        return diffB - diffA;
+      });
+
+    return {
+      totalGames: backendStats.totalGames,
+      completedGames: backendStats.completedGames,
+      leaderboard
+    };
+  }
+
   getTournamentStats(tournamentId: string): Observable<TournamentStats> {
-    return this.http.get<TournamentStats>(`${this.apiUrl}/${tournamentId}/stats`);
+    return this.http.get<any>(`${this.apiUrl}/${tournamentId}/stats`).pipe(
+      map(backendStats => this.mapToTournamentStats(backendStats))
+    );
   }
 
 

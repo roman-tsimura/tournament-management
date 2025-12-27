@@ -739,12 +739,16 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   async loadTournamentStats(): Promise<void> {
-    if (!this.currentTournament) return;
+    if (!this.tournamentId) return;
 
     try {
-      this.tournamentStats = await this.tournamentService.getTournamentStats(this.currentTournament.id).toPromise() || null;
+      this.statsLoading = true;
+      this.tournamentStats = await this.tournamentService.getTournamentStats(this.tournamentId).toPromise() || null;
     } catch (error) {
-      // Silently handle error
+      console.error('Error loading tournament stats:', error);
+    } finally {
+      this.statsLoading = false;
+      this.cdr.detectChanges();
     }
   }
 
