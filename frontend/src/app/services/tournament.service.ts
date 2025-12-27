@@ -41,8 +41,59 @@ export class TournamentService {
     return this.http.get<Tournament[]>(this.apiUrl);
   }
 
+  /**
+   * Transforms a backend game object to the frontend Game interface
+   */
+  private mapToGame(backendGame: any): Game {
+    // Get player and team IDs
+    const player1Id = backendGame.player1Id?.toString() || '';
+    const player2Id = backendGame.player2Id?.toString() || '';
+    const team1Id = backendGame.team1Id?.toString() || '';
+    const team2Id = backendGame.team2Id?.toString() || '';
+
+    return {
+      id: backendGame.id.toString(),
+      homePlayer: {
+        playerId: player1Id,
+        playerName: '', // Will be populated by the component using getPlayerName
+        teamId: team1Id,
+        teamName: '', // Will be populated by the component using getTeamName
+        isHome: true
+      },
+      guestPlayer: {
+        playerId: player2Id,
+        playerName: '', // Will be populated by the component using getPlayerName
+        teamId: team2Id,
+        teamName: '', // Will be populated by the component using getTeamName
+        isHome: false
+      },
+      homeScore: backendGame.score1,
+      guestScore: backendGame.score2,
+      isCompleted: backendGame.status === 'COMPLETED',
+      createdAt: new Date(backendGame.createdAt),
+      updatedAt: new Date(backendGame.updatedAt)
+    };
+  }
+
+  /**
+   * Transforms a frontend Game object to the backend's expected format
+   */
+  private mapToBackendGame(game: Partial<Game>): any {
+    return {
+      player1Id: game.homePlayer?.playerId,
+      player2Id: game.guestPlayer?.playerId,
+      team1Id: game.homePlayer?.teamId,
+      team2Id: game.guestPlayer?.teamId,
+      score1: game.homeScore,
+      score2: game.guestScore,
+      status: game.isCompleted ? 'COMPLETED' : 'PENDING'
+    };
+  }
+
   getTournamentGames(tournamentId: string): Observable<Game[]> {
-    return this.http.get<Game[]>(`${this.apiUrl}/${tournamentId}/games`);
+    return this.http.get<any[]>(`${this.apiUrl}/${tournamentId}/games`).pipe(
+      map(games => games.map(game => this.mapToGame(game)))
+    );
   }
 
   deleteTournament(tournamentId: string): Observable<void> {
@@ -69,11 +120,19 @@ export class TournamentService {
       tournamentId: tournamentId,
       isTeam1Home: true // Assuming home team is team1
     };
-    return this.http.post<Game>(`${this.apiUrl}/${tournamentId}/games`, backendRequest);
+    
+    return this.http.post<any>(`${this.apiUrl}/${tournamentId}/games`, backendRequest).pipe(
+      map(game => this.mapToGame(game))
+    );
   }
 
   updateGame(tournamentId: string, gameId: string, gameData: Partial<Game>): Observable<Game> {
-    return this.http.put<Game>(`${this.apiUrl}/${tournamentId}/games/${gameId}`, gameData);
+    return this.http.put<any>(
+      `${this.apiUrl}/${tournamentId}/games/${gameId}`, 
+      this.mapToBackendGame(gameData)
+    ).pipe(
+      map(game => this.mapToGame(game))
+    );
   }
 
   deleteGame(tournamentId: string, gameId: string): Observable<void> {

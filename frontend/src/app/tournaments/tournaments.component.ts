@@ -796,15 +796,13 @@ export class TournamentsComponent implements OnInit, OnDestroy {
   }
 
   getPlayerName(playerId: string | number): string {
-    // Handle both string and number IDs
-    const player = this.players.find(p => p.id?.toString() === playerId.toString());
+    const player = this.availablePlayers.find(p => p.id?.toString() === playerId.toString());
     return player ? player.name : 'Unknown Player';
   }
 
   getTeamName(teamId: string | number | undefined): string {
     if (teamId === undefined) return 'Unknown Team';
-    // Handle both string and number IDs
-    const team = this.teams.find(t => t.id?.toString() === teamId.toString());
+    const team = this.availableTeams.find(t => t.id?.toString() === teamId.toString());
     return team ? team.name : 'Unknown Team';
   }
 
