@@ -106,7 +106,7 @@ export class TournamentService {
       .map((playerStat: any) => ({
         id: playerStat.playerId.toString(),
         name: playerStat.playerName,
-        totalPoints: playerStat.points,
+        totalPoints: playerStat.wins * 3 + playerStat.draws,
         gamesPlayed: playerStat.gamesPlayed,
         wins: playerStat.wins,
         draws: playerStat.draws,

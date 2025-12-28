@@ -15,7 +15,6 @@ public class TournamentStatsDTO {
     public static class PlayerStats {
         private Long playerId;
         private String playerName;
-        private int points;
         private int gamesPlayed;
         private int wins;
         private int draws;

@@ -117,8 +117,13 @@ export class PlayersComponent implements OnInit {
           this.cdr.markForCheck();
         }
       },
-      error: () => {
-        this.error = 'Failed to delete player';
+      error: (error) => {
+        const errorMessage = error.error?.message || error.message || 'Unknown error';
+        if (error.status === 500 && (errorMessage.includes('Referential integrity constraint violation') || errorMessage.includes('FOREIGN KEY'))) {
+          this.error = 'Cannot delete player because they are registered in a tournament. Please remove them from all tournaments first.';
+        } else {
+          this.error = `Failed to delete player: ${errorMessage}`;
+        }
         this.loading = false;
         this.cdr.markForCheck();
       }

@@ -144,14 +144,21 @@ export class TeamsComponent implements OnInit {
     }
 
     this.loading = true;
+    this.error = null;
+    
     this.teamService.deleteTeam(id).subscribe({
       next: () => {
         this.teams = this.teams.filter(team => team.id !== id);
         this.loading = false;
         this.cdr.markForCheck();
       },
-      error: (err) => {
-        this.error = 'Failed to delete team. Please try again.';
+      error: (error) => {
+        const errorMessage = error.error?.message || error.message || 'Unknown error';
+        if (error.status === 500 && (errorMessage.includes('Referential integrity constraint violation') || errorMessage.includes('FOREIGN KEY'))) {
+          this.error = 'Cannot delete team because they are registered in a tournament. Please remove them from all tournaments first.';
+        } else {
+          this.error = `Failed to delete team: ${errorMessage}`;
+        }
         this.loading = false;
         this.cdr.markForCheck();
       }

@@ -122,10 +122,6 @@ public class TournamentService {
 
                 playerStats.setPlayerId(pt.getPlayer().getId());
                 playerStats.setPlayerName(pt.getPlayer().getName());
-
-                // Calculate points based on wins and draws
-                int points = (playerStats.getWins() * 3) + playerStats.getDraws();
-                playerStats.setPoints(points);
             }
         }
     }
@@ -160,6 +156,5 @@ public class TournamentService {
         } else {
             playerStats.setLosses(playerStats.getLosses() + 1);
         }
-
     }
 }
