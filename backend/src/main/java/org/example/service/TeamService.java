@@ -42,8 +42,7 @@ public class TeamService {
     @Transactional
     public Team update(Long id, Team teamDetails) {
         return teamRepository.findById(id).map(team -> {
-            if (!team.getName().equals(teamDetails.getName()) &&
-                    teamRepository.existsByName(teamDetails.getName())) {
+            if (!team.getName().equals(teamDetails.getName()) && teamRepository.existsByName(teamDetails.getName())) {
                 throw new IllegalStateException("Team with name " + teamDetails.getName() + " already exists");
             }
             team.setName(teamDetails.getName());

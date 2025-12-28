@@ -12,7 +12,6 @@ public class GameDTO {
     private Long team2Id;
     private Integer score1;
     private Integer score2;
-    private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private Long tournamentId;

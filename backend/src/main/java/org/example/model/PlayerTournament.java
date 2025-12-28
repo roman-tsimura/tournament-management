@@ -20,10 +20,7 @@ public class PlayerTournament {
     @JoinColumn(name = "tournament_id")
     @EqualsAndHashCode.Exclude
     private Tournament tournament;
-    
-    @Column(nullable = false, columnDefinition = "integer default 0")
-    private Integer points = 0;
-    
+
     public PlayerTournamentId getId() {
         if (player == null || tournament == null) {
             return null;

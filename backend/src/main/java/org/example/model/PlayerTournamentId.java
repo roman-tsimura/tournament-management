@@ -1,10 +1,10 @@
 package org.example.model;
 
+import lombok.Data;
+
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Objects;
-
-import lombok.Data;
 
 @Data
 public class PlayerTournamentId implements Serializable {

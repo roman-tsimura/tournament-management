@@ -73,38 +73,7 @@ public class TournamentService {
                 .orElseThrow(() -> new EntityNotFoundException("Game not found with id: " + gameId));
 
         gameService.updateGameScore(gameId, scoreUpdate.getScore1(), scoreUpdate.getScore2());
-        
-        // Update player points if both scores are set
-        if (scoreUpdate.getScore1() != null && scoreUpdate.getScore2() != null) {
-            updatePlayerPoints(game);
-        }
-
         return gameRepository.save(game);
-    }
-
-    private void updatePlayerPoints(Game game) {
-        if (game == null || game.getTournament() == null) {
-            throw new IllegalArgumentException("Game or tournament cannot be null");
-        }
-        Tournament tournament = game.getTournament();
-        if (game.isDraw()) {
-            handleDraw(tournament, game.getPlayer1(), game.getPlayer2());
-        } else {
-            handleWin(tournament, game.getWinner());
-        }
-        tournamentRepository.save(tournament);
-    }
-
-    private void handleDraw(Tournament tournament, Player player1, Player player2) {
-        int player1Points = tournament.getPlayerPoints(player1.getId()) + 1;
-        int player2Points = tournament.getPlayerPoints(player2.getId()) + 1;
-
-        tournament.updatePlayerPoints(player1, player1Points);
-        tournament.updatePlayerPoints(player2, player2Points);
-    }
-
-    private void handleWin(Tournament tournament, Player winner) {
-        tournament.updatePlayerPoints(winner, tournament.getPlayerPoints(winner.getId()) + 3);
     }
 
     @Transactional
@@ -113,7 +82,6 @@ public class TournamentService {
             TournamentStatsDTO stats = new TournamentStatsDTO();
             stats.setTournamentId(tournamentId);
 
-            // Get all games for the tournament
             List<Game> games = gameRepository.findByTournament(tournament);
             stats.setTotalGames(games.size());
 
@@ -123,44 +91,43 @@ public class TournamentService {
                     .count();
             stats.setCompletedGames((int) completedGames);
 
-            // Get all player statistics for the tournament
             List<PlayerTournament> playerTournaments = tournament.getPlayerStats();
-
-            // Calculate player statistics
             Map<Long, TournamentStatsDTO.PlayerStats> playerStatsMap = new HashMap<>();
 
-            // Process games with scores for player stats
-            for (Game game : games) {
-                if (game.getScore1() != null && game.getScore2() != null) {
-                    // Update player stats
-                    if (game.getPlayer1() != null) {
-                        updatePlayerStats(playerStatsMap, game.getPlayer1(),
-                                game.getScore1(), game.getScore2());
-                    }
-                    if (game.getPlayer2() != null) {
-                        updatePlayerStats(playerStatsMap, game.getPlayer2(),
-                                game.getScore2(), game.getScore1());
-                    }
-                }
-            }
-
-            // Set player points from PlayerTournament relationship
-            for (PlayerTournament pt : playerTournaments) {
-                if (pt.getPlayer() != null) {
-                    TournamentStatsDTO.PlayerStats playerStats = playerStatsMap.computeIfAbsent(
-                            pt.getPlayer().getId(),
-                            k -> new TournamentStatsDTO.PlayerStats()
-                    );
-                    playerStats.setPlayerId(pt.getPlayer().getId());
-                    playerStats.setPlayerName(pt.getPlayer().getName());
-                    playerStats.setPoints(pt.getPoints());
-                }
-            }
-
+            processGameResults(games, playerStatsMap);
+            updatePlayerTournamentStats(playerTournaments, playerStatsMap);
             stats.setPlayerStats(new ArrayList<>(playerStatsMap.values()));
-
             return stats;
         });
+    }
+
+    private void processGameResults(List<Game> games, Map<Long, TournamentStatsDTO.PlayerStats> playerStatsMap) {
+        games.stream()
+            .filter(game -> game.getScore1() != null && game.getScore2() != null)
+            .forEach(game -> {
+                updatePlayerStats(playerStatsMap, game.getPlayer1(), game.getScore1(), game.getScore2());
+                updatePlayerStats(playerStatsMap, game.getPlayer2(), game.getScore2(), game.getScore1());
+            });
+    }
+
+    private void updatePlayerTournamentStats(
+            List<PlayerTournament> playerTournaments,
+            Map<Long, TournamentStatsDTO.PlayerStats> playerStatsMap
+    ) {
+        for (PlayerTournament pt : playerTournaments) {
+            if (pt.getPlayer() != null) {
+                TournamentStatsDTO.PlayerStats playerStats = playerStatsMap.computeIfAbsent(
+                        pt.getPlayer().getId(),
+                        k -> new TournamentStatsDTO.PlayerStats());
+
+                playerStats.setPlayerId(pt.getPlayer().getId());
+                playerStats.setPlayerName(pt.getPlayer().getName());
+
+                // Calculate points based on wins and draws
+                int points = (playerStats.getWins() * 3) + playerStats.getDraws();
+                playerStats.setPoints(points);
+            }
+        }
     }
 
     private void updatePlayerStats(

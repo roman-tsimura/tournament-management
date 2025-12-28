@@ -19,25 +19,4 @@ public class CreateGameRequest {
 
     @NotNull(message = "Tournament ID is required")
     private Long tournamentId;
-
-    // Explicit getters to ensure they're available
-    public Long getPlayer1Id() {
-        return player1Id;
-    }
-
-    public Long getPlayer2Id() {
-        return player2Id;
-    }
-
-    public Long getTeam1Id() {
-        return team1Id;
-    }
-
-    public Long getTeam2Id() {
-        return team2Id;
-    }
-
-    public Long getTournamentId() {
-        return tournamentId;
-    }
 }

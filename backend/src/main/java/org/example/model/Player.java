@@ -1,14 +1,14 @@
 package org.example.model;
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.ToString;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,16 +41,7 @@ public class Player implements java.io.Serializable {
     @ToString.Exclude
     @EqualsAndHashCode.Exclude
     private List<PlayerTournament> tournamentStats = new ArrayList<>();
-    
-    @Transient
-    public Integer getPointsForTournament(Long tournamentId) {
-        return tournamentStats.stream()
-            .filter(pt -> pt.getTournament().getId().equals(tournamentId))
-            .findFirst()
-            .map(PlayerTournament::getPoints)
-            .orElse(0);
-    }
-    
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();

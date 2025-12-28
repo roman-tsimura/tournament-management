@@ -26,10 +26,6 @@ public class PlayerService {
         return playerRepository.findById(id);
     }
 
-    public Optional<Player> findByName(String name) {
-        return playerRepository.findByName(name);
-    }
-
     @Transactional
     public Player save(Player player) {
         return playerRepository.save(player);
@@ -46,9 +42,5 @@ public class PlayerService {
             player.setName(playerDetails.getName());
             return playerRepository.save(player);
         }).orElseThrow(() -> new RuntimeException("Player not found with id: " + id));
-    }
-
-    public List<Player> findPlayersByTournamentId(Long tournamentId) {
-        return playerRepository.findByTournamentId(tournamentId);
     }
 }

@@ -14,9 +14,6 @@ import org.example.repository.TournamentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Optional;
-
 @Service
 public class GameService {
     private final GameRepository gameRepository;
@@ -33,14 +30,6 @@ public class GameService {
         this.playerRepository = playerRepository;
         this.teamRepository = teamRepository;
         this.tournamentRepository = tournamentRepository;
-    }
-
-    public List<Game> findAll() {
-        return gameRepository.findAll();
-    }
-
-    public Optional<Game> findById(Long id) {
-        return gameRepository.findById(id);
     }
 
     @Transactional
@@ -67,13 +56,6 @@ public class GameService {
         game.setTournament(tournament);
 
         return gameRepository.save(game);
-    }
-
-    @Transactional
-    public List<Game> findGamesByTournamentId(Long tournamentId) {
-        Tournament tournament = tournamentRepository.findById(tournamentId)
-                .orElseThrow(() -> new ResourceNotFoundException("Tournament not found with id: " + tournamentId));
-        return gameRepository.findByTournament(tournament);
     }
 
     @Transactional
