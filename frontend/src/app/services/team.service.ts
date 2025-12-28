@@ -15,10 +15,6 @@ export class TeamService {
     return this.http.get<Team[]>(this.apiUrl);
   }
 
-  getTeam(id: number): Observable<Team> {
-    return this.http.get<Team>(`${this.apiUrl}/${id}`);
-  }
-
   createTeam(team: Team): Observable<Team> {
     return this.http.post<Team>(this.apiUrl, team);
   }

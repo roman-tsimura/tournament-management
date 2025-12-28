@@ -1,16 +1,8 @@
-export interface TournamentSettings {
-  teamAssignment: 'manual' | 'random' | 'by_teams';
-  homeAwayAssignment: 'manual' | 'random' | 'alternating';
-}
-
 export interface Tournament {
   id: string;
   name: string;
   games?: Game[];
   gameCount?: number;
-  players: TournamentPlayer[];
-  teams: TournamentTeam[];
-  settings: TournamentSettings;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -43,12 +35,6 @@ export interface TournamentPlayer {
   losses: number;
   goalsScored: number;
   goalsConceded: number;
-}
-
-export interface TournamentTeam {
-  id: string;
-  name: string;
-  players: string[]; // Player IDs
 }
 
 export interface CreateTournamentRequest {

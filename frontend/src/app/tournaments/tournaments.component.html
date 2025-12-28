@@ -4,52 +4,82 @@
         <div class="tournament-list">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2>Tournaments</h2>
-                <button type="button" (click)="createNewTournament()" class="btn btn-primary" [class.disabled]="isLoading">
+                <button 
+                    type="button" 
+                    (click)="createNewTournament()" 
+                    class="btn btn-primary" 
+                    [class.disabled]="isLoading"
+                    [attr.aria-busy]="isLoading"
+                    [attr.aria-disabled]="isLoading"
+                    [attr.aria-label]="isLoading ? 'Creating tournament...' : 'Create new tournament'"
+                >
                     @if (isLoading) {
                         <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        <span class="visually-hidden">Creating tournament...</span>
                     } @else {
-                        <i class="bi bi-plus-circle me-1"></i>
+                        <i class="bi bi-plus-circle me-1" aria-hidden="true"></i>
+                        Create New Tournament
                     }
-                    Create New Tournament
                 </button>
             </div>
 
             @if (isLoading) {
-                <div class="text-center my-5">
+                <div class="text-center my-5" role="status" aria-live="polite" aria-busy="true">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Loading tournaments...</span>
                     </div>
-                    <p class="mt-2">Loading tournaments, please wait...</p>
+                    <p class="mt-2" aria-atomic="true">Loading tournaments, please wait...</p>
                 </div>
             } @else if (tournaments.length === 0) {
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle me-2"></i>
-                    No tournaments found. Create a new tournament to get started!
+                <div class="alert alert-info" role="alert" aria-live="polite">
+                    <i class="bi bi-info-circle me-2" aria-hidden="true"></i>
+                    <span>No tournaments found. Create a new tournament to get started!</span>
                 </div>
             }
 
             @if (!isLoading && tournaments.length > 0) {
                 <div class="table-responsive">
-                    <table class="table table-hover">
+                    <table class="table table-hover" role="grid" aria-label="Tournaments list">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>Games</th>
-                                <th class="text-end">Actions</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Games</th>
+                                <th scope="col" class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             @for (tournament of tournaments | slice: (page-1) * pageSize : (page-1) * pageSize + pageSize; track tournament.id) {
                                 <tr>
-                                    <td>{{ tournament.name }}</td>
+                                    <th scope="row">{{ tournament.name }}</th>
                                     <td>{{ tournament.gameCount || 0 }}</td>
                                     <td class="text-end">
                                         <div class="d-flex justify-content-end gap-1">
-                                            <button type="button" (click)="viewTournament(tournament.id, $event)" class="btn btn-sm btn-outline-primary" [disabled]="isLoading">
-                                                View
+                                            <button 
+                                                type="button" 
+                                                (click)="viewTournament(tournament.id, $event)" 
+                                                class="btn btn-sm btn-outline-primary" 
+                                                [disabled]="isLoading"
+                                                [attr.aria-label]="'View details for ' + tournament.name"
+                                                [attr.aria-busy]="isLoading"
+                                            >
+                                                <span [attr.aria-hidden]="isLoading">View</span>
+                                                @if (isLoading) {
+                                                    <span class="visually-hidden">Loading tournament details...</span>
+                                                }
                                             </button>
-                                            <button type="button" (click)="deleteTournament(tournament.id, $event)" class="btn btn-sm btn-outline-danger" [disabled]="isLoading">
-                                                <i class="bi bi-trash"></i> Delete
+                                            <button 
+                                                type="button" 
+                                                (click)="deleteTournament(tournament.id, $event)" 
+                                                class="btn btn-sm btn-outline-danger" 
+                                                [disabled]="isLoading"
+                                                [attr.aria-label]="'Delete tournament ' + tournament.name"
+                                                [attr.aria-busy]="isLoading"
+                                            >
+                                                <i class="bi bi-trash" aria-hidden="true"></i>
+                                                <span class="ms-1" [attr.aria-hidden]="isLoading">Delete</span>
+                                                @if (isLoading) {
+                                                    <span class="visually-hidden">Deleting tournament...</span>
+                                                }
                                             </button>
                                         </div>
                                     </td>
@@ -67,7 +97,10 @@
                             [maxSize]="5"
                             [rotate]="true"
                             [ellipses]="true"
-                            [boundaryLinks]="true">
+                            [boundaryLinks]="true"
+                            role="navigation"
+                            aria-label="Pagination"
+                    >
                     </ngb-pagination>
                 </div>
             }
@@ -156,17 +189,17 @@
                                 </div>
                             } @else if (tournamentStats) {
                                 <div class="table-responsive">
-                                    <table class="table table-hover mb-0">
+                                    <table class="table table-hover mb-0" role="grid" aria-label="Tournament statistics">
                                         <thead class="table-light">
                                             <tr>
-                                                <th>#</th>
-                                                <th>Player</th>
-                                                <th class="text-center">Played</th>
-                                                <th class="text-center">Wins</th>
-                                                <th class="text-center">Draws</th>
-                                                <th class="text-center">Losses</th>
-                                                <th class="text-center">Goals</th>
-                                                <th class="text-center">Points</th>
+                                                <th scope="col">#</th>
+                                                <th scope="col">Player</th>
+                                                <th scope="col" class="text-center">Played</th>
+                                                <th scope="col" class="text-center">Wins</th>
+                                                <th scope="col" class="text-center">Draws</th>
+                                                <th scope="col" class="text-center">Losses</th>
+                                                <th scope="col" class="text-center">Goals</th>
+                                                <th scope="col" class="text-center">Points</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -213,17 +246,32 @@
 
             <!-- Add Game Button -->
             <div class="d-flex justify-content-end mb-3">
-                <button type="button" class="btn btn-primary" (click)="toggleAddGameForm()">
-                    <i class="bi" [ngClass]="showAddGameForm ? 'bi-dash-lg' : 'bi-plus-lg'"></i>
+                <button 
+                    type="button" 
+                    class="btn btn-primary" 
+                    (click)="toggleAddGameForm()"
+                    [attr.aria-expanded]="showAddGameForm"
+                    [attr.aria-controls]="'addGameForm'"
+                >
+                    <i 
+                        class="bi" 
+                        [ngClass]="showAddGameForm ? 'bi-dash-lg' : 'bi-plus-lg'" 
+                        aria-hidden="true"
+                    ></i>
                     {{ showAddGameForm ? 'Hide' : 'Add' }} Game
                 </button>
             </div>
 
             <!-- Add New Game Form -->
-            <div class="card mb-4" *ngIf="showAddGameForm">
+            <div class="card mb-4" *ngIf="showAddGameForm" id="addGameForm" role="region" aria-labelledby="addGameFormTitle">
                 <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0">Add New Game</h5>
-                    <button type="button" class="btn-close" (click)="toggleAddGameForm()" aria-label="Close"></button>
+                    <h5 class="mb-0" id="addGameFormTitle">Add New Game</h5>
+                    <button 
+                        type="button" 
+                        class="btn-close" 
+                        (click)="toggleAddGameForm()" 
+                        aria-label="Close add game form"
+                    ></button>
                 </div>
                 <div class="card-body">
                     <form [formGroup]="gameForm" (ngSubmit)="addGame()">
@@ -242,7 +290,14 @@
                                                         [ngClass]="{'is-invalid': gameForm.get('homePlayerId')?.invalid && gameForm.get('homePlayerId')?.touched}">
                                                     <option value="">Select player</option>
                                                     @for (player of players; track player.id) {
-                                                        <option [value]="player.id">{{ player.name }}</option>
+                                                        <option [value]="player.id" 
+                                                                [disabled]="isPlayerSelected(player.id, 'home')"
+                                                                [class.text-muted]="isPlayerSelected(player.id, 'home')">
+                                                            {{ player.name }}
+                                                            @if (isPlayerSelected(player.id, 'home')) {
+                                                                (selected for away)
+                                                            }
+                                                        </option>
                                                     }
                                                 </select>
                                                 <button class="btn btn-outline-secondary" type="button" (click)="onRandomizePlayer('home')">
@@ -263,9 +318,10 @@
                                                     <option value="">Select team</option>
                                                     @for (team of filteredHomeTeams; track team.id) {
                                                         <option [value]="team.id"
-                                                                [disabled]="team.id === gameForm.get('guestTeamId')?.value">
+                                                                [disabled]="isTeamSelected(team.id, 'home')"
+                                                                [class.text-muted]="isTeamSelected(team.id, 'home')">
                                                             {{ team.name }}
-                                                            @if (team.id === gameForm.get('guestTeamId')?.value) {
+                                                            @if (isTeamSelected(team.id, 'home')) {
                                                                 (selected for away)
                                                             }
                                                         </option>
@@ -304,8 +360,13 @@
                                                         [ngClass]="{'is-invalid': gameForm.get('guestPlayerId')?.invalid && gameForm.get('guestPlayerId')?.touched}">
                                                     <option value="">Select player</option>
                                                     @for (player of players; track player.id) {
-                                                        <option [value]="player.id" [disabled]="player.id === gameForm.get('homePlayerId')?.value">
+                                                        <option [value]="player.id" 
+                                                                [disabled]="isPlayerSelected(player.id, 'guest')"
+                                                                [class.text-muted]="isPlayerSelected(player.id, 'guest')">
                                                             {{ player.name }}
+                                                            @if (isPlayerSelected(player.id, 'guest')) {
+                                                                (selected for home)
+                                                            }
                                                         </option>
                                                     }
                                                 </select>
@@ -326,10 +387,11 @@
                                                         [disabled]="!gameForm.get('guestPlayerId')?.value">
                                                     <option value="">Select team</option>
                                                     @for (team of filteredGuestTeams; track team.id) {
-                                                        <option [value]="team.id" 
-                                                                [disabled]="team.id === gameForm.get('homeTeamId')?.value">
+                                                        <option [value]="team.id"
+                                                                [disabled]="isTeamSelected(team.id, 'guest')"
+                                                                [class.text-muted]="isTeamSelected(team.id, 'guest')">
                                                             {{ team.name }}
-                                                            @if (team.id === gameForm.get('homeTeamId')?.value) {
+                                                            @if (isTeamSelected(team.id, 'guest')) {
                                                                 (selected for home)
                                                             }
                                                         </option>
@@ -355,7 +417,7 @@
                                     <button type="submit" class="btn btn-primary" [disabled]="gameForm.invalid || isSubmitting">
                                         @if (isSubmitting) {
                                             <span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
-                                            Adding Game...
+                                            <span class="visually-hidden">Adding game...</span>
                                         } @else {
                                             <i class="bi bi-plus-circle me-1"></i> Add Game
                                         }
@@ -388,13 +450,24 @@
                         <p class="text-muted">Add your first game using the form above</p>
                     </div>
                 } @else {
-                    <div class="list-group list-group-flush games-table">
+                    <div class="list-group list-group-flush games-table" role="list">
                         @for (game of games; track game.id) {
-                            <div class="list-group-item game-item">
+                            <div class="list-group-item game-item" role="listitem">
                                 <div class="d-flex justify-content-between align-items-center">
                                     <div class="d-flex align-items-center flex-grow-1">
-                                        <button class="btn btn-sm btn-link me-2" (click)="toggleGameExpand(game)">
-                                            <i class="bi" [ngClass]="game.isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'"></i>
+                                        <button 
+                                            class="btn btn-sm btn-link me-2" 
+                                            (click)="toggleGameExpand(game)"
+                                            [attr.aria-expanded]="game.isExpanded"
+                                            [attr.aria-controls]="'game-details-' + game.id"
+                                            [attr.aria-label]="(game.isExpanded ? 'Collapse' : 'Expand') + ' game details'"
+                                        >
+                                            <i 
+                                                class="bi" 
+                                                [ngClass]="game.isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'"
+                                                aria-hidden="true"
+                                            ></i>
+                                            <span class="visually-hidden">{{ game.isExpanded ? 'Collapse' : 'Expand' }} game details</span>
                                         </button>
                                         <div class="flex-grow-1">
                                             <div class="fw-medium">
@@ -453,7 +526,12 @@
                                 </div>
 
                                 @if (game.isExpanded) {
-                                    <div class="mt-3 pt-3 border-top">
+                                    <div 
+                                        class="mt-3 pt-3 border-top" 
+                                        id="game-details-{{game.id}}" 
+                                        role="region"
+                                        [attr.aria-labelledby]="'game-header-' + game.id"
+                                    >
                                         @if (scoreForms.has(game.id!)) {
                                             @let scoreForm = scoreForms.get(game.id!);
                                             @if (scoreForm) {

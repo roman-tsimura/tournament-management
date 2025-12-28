@@ -73,20 +73,6 @@ export class TournamentService {
     };
   }
 
-  /**
-   * Transforms a frontend Game object to the backend's expected format
-   */
-  private mapToBackendGame(game: Partial<Game>): any {
-    return {
-      player1Id: game.homePlayer?.playerId,
-      player2Id: game.guestPlayer?.playerId,
-      team1Id: game.homePlayer?.teamId,
-      team2Id: game.guestPlayer?.teamId,
-      score1: game.homeScore,
-      score2: game.guestScore
-    };
-  }
-
   getTournamentGames(tournamentId: string): Observable<Game[]> {
     return this.http.get<any[]>(`${this.apiUrl}/${tournamentId}/games`).pipe(
       map(games => games.map(game => this.mapToGame(game)))
@@ -95,10 +81,6 @@ export class TournamentService {
 
   deleteTournament(tournamentId: string): Observable<void> {
     return this.http.delete<void>(`${this.apiUrl}/${tournamentId}`);
-  }
-
-  completeTournament(tournamentId: string): Observable<Tournament> {
-    return this.http.post<Tournament>(`${this.apiUrl}/${tournamentId}/complete`, {});
   }
 
   private mapToTournamentStats(backendStats: any): TournamentStats {
@@ -138,7 +120,6 @@ export class TournamentService {
     );
   }
 
-
   // Game management
   addGame(tournamentId: string, gameData: AddGameRequest): Observable<Game> {
     // Map the frontend's AddGameRequest to the backend's expected format
@@ -151,15 +132,6 @@ export class TournamentService {
     };
     
     return this.http.post<any>(`${this.apiUrl}/${tournamentId}/games`, backendRequest).pipe(
-      map(game => this.mapToGame(game))
-    );
-  }
-
-  updateGame(tournamentId: string, gameId: string, gameData: Partial<Game>): Observable<Game> {
-    return this.http.put<any>(
-      `${this.apiUrl}/${tournamentId}/games/${gameId}`, 
-      this.mapToBackendGame(gameData)
-    ).pipe(
       map(game => this.mapToGame(game))
     );
   }

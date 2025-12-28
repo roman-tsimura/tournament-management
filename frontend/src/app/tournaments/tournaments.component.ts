@@ -1,16 +1,10 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { ConfirmDialogComponent } from '../shared/confirm-dialog/confirm-dialog.component';
 import { CommonModule } from '@angular/common';
-import { AbstractControl, FormsModule } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, FormControl } from '@angular/forms';
-import { RouterModule, Router, ActivatedRoute, NavigationEnd, RouterLink } from '@angular/router';
-import {
-  Tournament,
-  TournamentStats,
-  Game,
-  AddGameRequest,
-  UpdateGameScoreRequest, TournamentSettings
-} from '../models/tournament.model';
+import { RouterModule, Router, ActivatedRoute, NavigationEnd } from '@angular/router';
+import { Tournament, TournamentStats, Game, AddGameRequest, UpdateGameScoreRequest } from '../models/tournament.model';
 import { TournamentService } from '../services/tournament.service';
 import { Player } from '../models/player.model';
 import { Team } from '../models/team.model';
@@ -349,7 +343,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     
     // Filter out the other selected player (if any) from available players
     const availablePlayers = this.players.filter(
-      player => !otherPlayerId || player.id !== otherPlayerId
+      player => !otherPlayerId || String(player.id) !== otherPlayerId
     );
     
     if (availablePlayers.length === 0) {
@@ -360,7 +354,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     const randomPlayer = this.tournamentService.getRandomPlayer(availablePlayers);
     if (randomPlayer) {
       const controlName = `${playerType}PlayerId`;
-      this.gameForm.get(controlName)?.setValue(randomPlayer.id);
+      this.gameForm.get(controlName)?.setValue(String(randomPlayer.id));
       // The valueChanges subscription will handle team loading
     }
   }
@@ -377,7 +371,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     
     // Filter out the other selected team (if any)
     availableTeams = availableTeams.filter(
-      team => !otherTeamId || team.id !== otherTeamId
+      team => !otherTeamId || String(team.id) !== otherTeamId
     );
     
     if (availableTeams.length === 0) {
@@ -388,8 +382,35 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     const randomTeam = this.tournamentService.getRandomTeam(availableTeams);
     if (randomTeam) {
       const controlName = `${playerType}TeamId`;
-      this.gameForm.get(controlName)?.setValue(randomTeam.id);
+      // Ensure we set the team ID as a string to match form expectations
+      this.gameForm.get(controlName)?.setValue(String(randomTeam.id));
     }
+  }
+
+  // Check if a player is already selected in the form
+  isPlayerSelected(playerId: number | string | undefined, excludeType?: 'home' | 'guest'): boolean {
+    if (!playerId) return false;
+    const playerIdStr = String(playerId);
+    if (excludeType === 'home') {
+      return this.gameForm.get('guestPlayerId')?.value === playerIdStr;
+    } else if (excludeType === 'guest') {
+      return this.gameForm.get('homePlayerId')?.value === playerIdStr;
+    }
+    return this.gameForm.get('homePlayerId')?.value === playerIdStr || 
+           this.gameForm.get('guestPlayerId')?.value === playerIdStr;
+  }
+
+  // Check if a team is already selected in the form
+  isTeamSelected(teamId: number | string | undefined, excludeType?: 'home' | 'guest'): boolean {
+    if (!teamId) return false;
+    const teamIdStr = String(teamId);
+    if (excludeType === 'home') {
+      return this.gameForm.get('guestTeamId')?.value === teamIdStr;
+    } else if (excludeType === 'guest') {
+      return this.gameForm.get('homeTeamId')?.value === teamIdStr;
+    }
+    return this.gameForm.get('homeTeamId')?.value === teamIdStr || 
+           this.gameForm.get('guestTeamId')?.value === teamIdStr;
   }
 
   addGame(): void {
@@ -408,13 +429,22 @@ export class TournamentsComponent implements OnInit, OnDestroy {
     }
 
     // Get player and team names
-    const homePlayer = this.players.find(p => p.id === formValue.homePlayerId);
-    const guestPlayer = this.players.find(p => p.id === formValue.guestPlayerId);
-    const homeTeam = this.teams.find(t => t.id === formValue.homeTeamId);
-    const guestTeam = this.teams.find(t => t.id === formValue.guestTeamId);
+    // Convert IDs to strings for comparison since form values are always strings
+    const homePlayer = this.players.find(p => p.id?.toString() === formValue.homePlayerId);
+    const guestPlayer = this.players.find(p => p.id?.toString() === formValue.guestPlayerId);
+    const homeTeam = this.teams.find(t => t.id?.toString() === formValue.homeTeamId);
+    const guestTeam = this.teams.find(t => t.id?.toString() === formValue.guestTeamId);
+
 
     if (!homePlayer || !guestPlayer || !homeTeam || !guestTeam) {
-      alert('Invalid player or team selection');
+      const missing = [];
+      if (!homePlayer) missing.push('Home player not found');
+      if (!guestPlayer) missing.push('Guest player not found');
+      if (!homeTeam) missing.push('Home team not found');
+      if (!guestTeam) missing.push('Guest team not found');
+
+      console.error('[DEBUG] Validation failed - Missing data:', missing);
+      alert('Error: ' + missing.join(', '));
       this.isSubmitting = false;
       return;
     }
@@ -563,24 +593,6 @@ export class TournamentsComponent implements OnInit, OnDestroy {
       ]
     });
   }
-  
-  // Helper method to safely disable/enable form controls
-  private setFormControlState(control: AbstractControl | null, isDisabled: boolean): void {
-    if (!control) return;
-    
-    if (isDisabled) {
-      control.disable();
-    } else {
-      control.enable();
-    }
-  }
-  
-  public enableScoreEditing(game: GameWithSelection): void {
-    const scoreForm = this.scoreForms.get(game.id!);
-    if (scoreForm) {
-      scoreForm.enable();
-    }
-  }
 
   async loadTournaments(): Promise<void> {
     this.isLoading = true;
@@ -711,11 +723,7 @@ export class TournamentsComponent implements OnInit, OnDestroy {
           playerId: selection.playerId,
           teamId: selection.teamId,
           isHome: selection.isHome
-        })),
-        settings: {
-          teamAssignment: formValue.teamAssignment,
-          homeAwayAssignment: formValue.homeAwayAssignment
-        } as TournamentSettings
+        }))
       };
 
       await this.tournamentService.createTournament(tournamentData).toPromise();
